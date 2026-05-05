@@ -497,3 +497,52 @@ cd artifacts/api-server && npx tsx src/seed.ts
 - Add DB unique index/constraint for mission progress `(char_id, template_id)` with a migration.
 - Implement explicit 04:00 daily reset boundary.
 - Continue with achievement notification popup or NPC affinity.
+
+---
+
+## Session Update - 2026-05-06 03:52:18 +07:00
+
+### Task Done
+- Implemented explicit 04:00 daily reset boundary for daily grind missions and daily login reward.
+
+### Files Read
+- `README.md`
+- `HANDOFF.md`
+- `replit.md`
+- `artifacts/api-server/src/lib/dailyMission.ts`
+- `artifacts/api-server/src/routes/character.ts`
+- `scripts/src/smoke-test.ts`
+
+### Files Changed
+- `artifacts/api-server/src/lib/dailyReset.ts`
+- `artifacts/api-server/src/lib/dailyMission.ts`
+- `artifacts/api-server/src/routes/character.ts`
+- `scripts/src/smoke-test.ts`
+- `replit.md`
+- `HANDOFF.md`
+
+### Logic New / Fixed
+- Added shared reset helpers with `DAILY_RESET_HOUR = 4`.
+- Daily grind stale-claim checks now use reset windows instead of calendar midnight.
+- Daily login reward anti-double-claim, next claim time, and streak continuation now use the 04:00 reset window.
+- Smoke tests cover 03:59 still belonging to the previous reset window and 04:01 starting the new window.
+
+### Commands Run
+- `git status --short --branch`
+- `git checkout main`
+- `git pull origin main`
+- `pnpm typecheck`
+- `pnpm --filter @workspace/scripts exec tsx src/smoke-test.ts`
+
+### Test / Build Result
+- PASS: `pnpm typecheck`
+- PASS: smoke test, `58 passed / 0 failed / 58 total`
+- PASS: `pnpm build` after the change.
+
+### Known Risks
+- Reset window uses server local time; deployments should keep timezone explicit and stable.
+- Existing users who claimed between 00:00 and 03:59 may see behavior change to the intended 04:00 window.
+
+### Next Recommended Tasks
+- Add DB unique index/constraint for mission progress `(char_id, template_id)` with a migration.
+- Continue with achievement notification popup or NPC affinity.

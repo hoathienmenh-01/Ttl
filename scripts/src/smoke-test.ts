@@ -7,6 +7,12 @@
 import { REALMS, getRealmByKey, getNextRealm, getRealmName, computePower } from "../../artifacts/api-server/src/lib/realms.js";
 import { resolveSkillCast } from "../../artifacts/api-server/src/lib/skillCombat.js";
 import {
+  DAILY_RESET_HOUR,
+  getDailyResetStart,
+  getNextDailyResetAt,
+  isSameDailyResetWindow,
+} from "../../artifacts/api-server/src/lib/dailyReset.js";
+import {
   getDailyGrindAwareProgress,
   getDailyGrindAwareStatus,
   isStaleDailyGrindClaim,
@@ -232,22 +238,39 @@ assert("Đang cooldown thì không cast skill", cooldownCast.skill === null);
 // ── 12. Daily grind mission reset ─────────────────────────────────────────
 console.log("\n[12] Daily Grind Mission Reset");
 const dailyTemplate = { type: "grind" };
-const today = new Date("2026-05-06T09:00:00.000Z");
+const today = new Date(2026, 4, 6, 9, 0, 0);
 const yesterdayClaim = {
   status: "claimed" as const,
   progress: 3,
-  claimedAt: new Date("2026-05-05T09:00:00.000Z"),
+  claimedAt: new Date(2026, 4, 5, 9, 0, 0),
 };
 const todayClaim = {
   status: "claimed" as const,
   progress: 3,
-  claimedAt: new Date("2026-05-06T08:00:00.000Z"),
+  claimedAt: new Date(2026, 4, 6, 8, 0, 0),
+};
+const beforeResetClaim = {
+  status: "claimed" as const,
+  progress: 3,
+  claimedAt: new Date(2026, 4, 6, 3, 30, 0),
 };
 assert("Grind claimed hôm qua được xem là stale", isStaleDailyGrindClaim(dailyTemplate, yesterdayClaim, today));
 assert("Grind claimed hôm nay không reset", !isStaleDailyGrindClaim(dailyTemplate, todayClaim, today));
+assert("Grind claimed trước 04:00 reset sau 04:00", isStaleDailyGrindClaim(dailyTemplate, beforeResetClaim, today));
 assert("Stale grind hiển thị available", getDailyGrindAwareStatus(dailyTemplate, yesterdayClaim, today) === "available");
 assert("Stale grind progress reset về 0", getDailyGrindAwareProgress(dailyTemplate, yesterdayClaim, today) === 0);
 assert("Non-grind không bị daily reset", getDailyGrindAwareStatus({ type: "main" }, yesterdayClaim, today) === "claimed");
+
+// ── 13. Daily reset window ────────────────────────────────────────────────
+console.log("\n[13] Daily Reset Window");
+const beforeFour = new Date(2026, 4, 6, 3, 59, 0);
+const afterFour = new Date(2026, 4, 6, 4, 1, 0);
+const previousEvening = new Date(2026, 4, 5, 22, 0, 0);
+assert("Reset hour là 04:00", DAILY_RESET_HOUR === 4);
+assert("03:59 vẫn thuộc reset window hôm trước", isSameDailyResetWindow(beforeFour, previousEvening));
+assert("04:01 đã sang reset window mới", !isSameDailyResetWindow(afterFour, previousEvening));
+assert("Reset start của 03:59 là ngày hôm trước 04:00", getDailyResetStart(beforeFour).getHours() === 4 && getDailyResetStart(beforeFour).getDate() === 5);
+assert("Next reset sau 04:01 là ngày hôm sau 04:00", getNextDailyResetAt(afterFour).getHours() === 4 && getNextDailyResetAt(afterFour).getDate() === 7);
 
 // ── Summary ───────────────────────────────────────────────────────────────────
 console.log(`\n${"─".repeat(50)}`);

@@ -91,7 +91,7 @@ Checked automatically after key actions (dungeon clear, boss kill, breakthrough,
 - Tracks `alchemyCrafts` counter on character for achievement checking
 
 ## Daily Login Reward
-- POST /character/daily-reward resets at midnight (00:00)
+- POST /character/daily-reward resets at 04:00 server local time
 - Awards: +100 Linh Thạch + 1x Hồi Khí Đan
 - `lastDailyClaimAt` tracked on character
 

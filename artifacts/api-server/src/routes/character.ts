@@ -12,6 +12,7 @@ import {
 import { logEconomy } from "../lib/economyLog";
 import { grantBattlePassXp } from "../lib/battlePassXp";
 import { grantPassXp } from "../lib/grantPassXp";
+import { getDailyResetStart, getNextDailyResetAt, getPreviousDailyResetStart } from "../lib/dailyReset";
 
 const router = Router();
 
@@ -241,11 +242,11 @@ router.post("/character/daily-reward", requireAuth, async (req, res) => {
   const char = chars[0];
 
   const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const resetStart = getDailyResetStart(now);
 
   // Anti-double-claim
-  if (char.lastDailyClaimAt && char.lastDailyClaimAt >= todayStart) {
-    const nextClaim = new Date(todayStart.getTime() + 86400000);
+  if (char.lastDailyClaimAt && char.lastDailyClaimAt >= resetStart) {
+    const nextClaim = getNextDailyResetAt(now);
     const msRemaining = nextClaim.getTime() - now.getTime();
     const hoursLeft = Math.floor(msRemaining / 3600000);
     const minsLeft = Math.floor((msRemaining % 3600000) / 60000);
@@ -267,9 +268,9 @@ router.post("/character/daily-reward", requireAuth, async (req, res) => {
   const CARD_BONUS_LS = cardActive ? 100 : 0;
 
   // Compute streak
-  const yesterday = new Date(todayStart.getTime() - 86400000);
+  const yesterday = getPreviousDailyResetStart(now);
   let newStreak: number;
-  if (char.lastDailyClaimAt && char.lastDailyClaimAt >= yesterday && char.lastDailyClaimAt < todayStart) {
+  if (char.lastDailyClaimAt && char.lastDailyClaimAt >= yesterday && char.lastDailyClaimAt < resetStart) {
     newStreak = Math.min((char.loginStreak ?? 0) + 1, 7);
   } else {
     newStreak = 1;
@@ -312,7 +313,7 @@ router.post("/character/daily-reward", requireAuth, async (req, res) => {
     grantBattlePassXp(char.id, 10),
   ]);
 
-  const nextClaim = new Date(todayStart.getTime() + 86400000);
+  const nextClaim = getNextDailyResetAt(now);
   const itemMsg = itemGranted ? ` và 1x ${itemGranted.name}` : "";
   res.json({
     message: cardActive

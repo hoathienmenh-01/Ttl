@@ -1,4 +1,4 @@
-import { isSameDay } from "./balance";
+import { isSameDailyResetWindow } from "./dailyReset";
 
 export type DailyMissionTemplate = {
   type: string;
@@ -18,7 +18,7 @@ export function isStaleDailyGrindClaim(
   return template.type === "grind"
     && progress?.status === "claimed"
     && !!progress.claimedAt
-    && !isSameDay(progress.claimedAt, now);
+    && !isSameDailyResetWindow(progress.claimedAt, now);
 }
 
 export function getDailyGrindAwareStatus(
