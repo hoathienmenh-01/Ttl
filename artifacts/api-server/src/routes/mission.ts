@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { missionTemplatesTable, missionProgressTable, charactersTable, inventoryItemsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { logEconomy } from "../lib/economyLog";
 import { grantPassXp } from "../lib/grantPassXp";
@@ -17,6 +17,15 @@ const router = Router();
 async function getChar(userId: string) {
   const chars = await db.select().from(charactersTable).where(eq(charactersTable.userId, userId)).limit(1);
   return chars[0] ?? null;
+}
+
+class RouteError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly body: Record<string, unknown>,
+  ) {
+    super(String(body.error ?? "Mission error"));
+  }
 }
 
 router.get("/mission", requireAuth, async (req, res) => {
@@ -95,102 +104,126 @@ router.post("/mission/:missionId/complete", requireAuth, async (req, res) => {
   if (!templates.length) { res.status(404).json({ error: "Nhiệm vụ không tồn tại", code: "NOT_FOUND" }); return; }
 
   const t = templates[0];
-  const progresses = await db.select().from(missionProgressTable)
-    .where(and(
-      eq(missionProgressTable.charId, char.id),
-      eq(missionProgressTable.templateId, missionId),
-    )).limit(1);
 
-  const prog = progresses[0];
-  const now  = new Date();
+  try {
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${char.id}), hashtext(${missionId}))`);
 
-  if (prog?.status === "claimed") {
-    if (isStaleDailyGrindClaim(t, prog, now)) {
-      // Daily reset — fall through
-    } else {
-      res.status(400).json({ error: "Nhiệm vụ đã nhận thưởng", code: "ALREADY_CLAIMED" });
-      return;
-    }
-  }
+      const freshChars = await tx.select().from(charactersTable)
+        .where(eq(charactersTable.id, char.id)).limit(1);
+      const freshChar = freshChars[0];
+      if (!freshChar) {
+        throw new RouteError(404, { error: "Chưa tạo nhân vật", code: "NO_CHARACTER" });
+      }
 
-  if (t.objectiveType) {
-    if (!prog) {
-      res.status(400).json({
-        error: `Hãy thực hiện hoạt động yêu cầu trước: ${t.description}`,
-        code: "PROGRESS_INSUFFICIENT",
-      });
-      return;
-    }
-    const isGrindReset = isStaleDailyGrindClaim(t, prog, now);
-    if (!isGrindReset && prog.status !== "completed") {
-      const remaining = t.progressMax - (prog.progress ?? 0);
-      res.status(400).json({
-        error: `Tiến độ chưa đủ. Còn ${remaining}/${t.progressMax} để hoàn thành.`,
-        code: "PROGRESS_INSUFFICIENT",
-        current: prog.progress ?? 0,
-        required: t.progressMax,
-      });
-      return;
-    }
-    if (isGrindReset && prog.status !== "completed") {
-      res.status(400).json({
-        error: "Hãy thực hiện hoạt động hôm nay trước khi nhận thưởng.",
-        code: "PROGRESS_INSUFFICIENT",
-      });
-      return;
-    }
-  }
+      const progresses = await tx.select().from(missionProgressTable)
+        .where(and(
+          eq(missionProgressTable.charId, char.id),
+          eq(missionProgressTable.templateId, missionId),
+        )).limit(1);
 
-  if (!prog) {
-    await db.insert(missionProgressTable).values({
-      charId: char.id, templateId: missionId,
-      status: "claimed", progress: t.progressMax,
-      acceptedAt: now, completedAt: now, claimedAt: now,
+      const prog = progresses[0];
+      const now = new Date();
+
+      if (prog?.status === "claimed") {
+        if (isStaleDailyGrindClaim(t, prog, now)) {
+          // Daily reset — allow today's completion checks below to decide.
+        } else {
+          throw new RouteError(400, { error: "Nhiệm vụ đã nhận thưởng", code: "ALREADY_CLAIMED" });
+        }
+      }
+
+      if (t.objectiveType) {
+        if (!prog) {
+          throw new RouteError(400, {
+            error: `Hãy thực hiện hoạt động yêu cầu trước: ${t.description}`,
+            code: "PROGRESS_INSUFFICIENT",
+          });
+        }
+        const isGrindReset = isStaleDailyGrindClaim(t, prog, now);
+        if (!isGrindReset && prog.status !== "completed") {
+          const remaining = t.progressMax - (prog.progress ?? 0);
+          throw new RouteError(400, {
+            error: `Tiến độ chưa đủ. Còn ${remaining}/${t.progressMax} để hoàn thành.`,
+            code: "PROGRESS_INSUFFICIENT",
+            current: prog.progress ?? 0,
+            required: t.progressMax,
+          });
+        }
+        if (isGrindReset && prog.status !== "completed") {
+          throw new RouteError(400, {
+            error: "Hãy thực hiện hoạt động hôm nay trước khi nhận thưởng.",
+            code: "PROGRESS_INSUFFICIENT",
+          });
+        }
+      }
+
+      if (!prog) {
+        await tx.insert(missionProgressTable).values({
+          charId: char.id, templateId: missionId,
+          status: "claimed", progress: t.progressMax,
+          acceptedAt: now, completedAt: now, claimedAt: now,
+        });
+      } else {
+        await tx.update(missionProgressTable).set({
+          status: "claimed", progress: t.progressMax,
+          completedAt: now, claimedAt: now,
+        }).where(eq(missionProgressTable.id, prog.id));
+      }
+
+      const newExp = freshChar.exp + t.rewardExp;
+      const newLinhThach = freshChar.linhThach + t.rewardLinhThach;
+      await tx.update(charactersTable).set({
+        exp: newExp,
+        linhThach: newLinhThach,
+        updatedAt: now,
+      }).where(eq(charactersTable.id, char.id));
+
+      const rewardItemsList = (t.rewardItems as string[]) ?? [];
+      const grantedItems: string[] = [];
+      for (const templateId of rewardItemsList) {
+        if (!templateId) continue;
+        const existing = await tx.select().from(inventoryItemsTable)
+          .where(and(eq(inventoryItemsTable.charId, char.id), eq(inventoryItemsTable.templateId, templateId)))
+          .limit(1);
+        if (existing.length) {
+          await tx.update(inventoryItemsTable).set({ qty: existing[0].qty + 1 })
+            .where(eq(inventoryItemsTable.id, existing[0].id));
+        } else {
+          await tx.insert(inventoryItemsTable).values({ charId: char.id, templateId, qty: 1 });
+        }
+        grantedItems.push(templateId);
+      }
+
+      return {
+        expGained: t.rewardExp,
+        linhThachGained: t.rewardLinhThach,
+        itemsGranted: grantedItems,
+        expBalanceAfter: newExp,
+        linhThachBalanceAfter: newLinhThach,
+      };
     });
-  } else {
-    await db.update(missionProgressTable).set({
-      status: "claimed", progress: t.progressMax,
-      completedAt: now, claimedAt: now,
-    }).where(eq(missionProgressTable.id, prog.id));
-  }
 
-  const newLinhThach = char.linhThach + t.rewardLinhThach;
-  await db.update(charactersTable).set({
-    exp:       char.exp + t.rewardExp,
-    linhThach: newLinhThach,
-    updatedAt: now,
-  }).where(eq(charactersTable.id, char.id));
+    await Promise.allSettled([
+      t.rewardExp > 0 ? logEconomy({ charId: char.id, type: "exp_gain", amount: t.rewardExp, source: `mission:${t.code}`, balanceAfter: result.expBalanceAfter, meta: { missionName: t.name } }) : Promise.resolve(),
+      t.rewardLinhThach > 0 ? logEconomy({ charId: char.id, type: "linh_thach_gain", amount: t.rewardLinhThach, source: `mission:${t.code}`, balanceAfter: result.linhThachBalanceAfter, meta: { missionName: t.name } }) : Promise.resolve(),
+      grantPassXp(char.id, 30),
+    ]);
 
-  // Grant reward items
-  const rewardItemsList = (t.rewardItems as string[]) ?? [];
-  const grantedItems: string[] = [];
-  for (const templateId of rewardItemsList) {
-    if (!templateId) continue;
-    const existing = await db.select().from(inventoryItemsTable)
-      .where(and(eq(inventoryItemsTable.charId, char.id), eq(inventoryItemsTable.templateId, templateId)))
-      .limit(1);
-    if (existing.length) {
-      await db.update(inventoryItemsTable).set({ qty: existing[0].qty + 1 })
-        .where(eq(inventoryItemsTable.id, existing[0].id));
-    } else {
-      await db.insert(inventoryItemsTable).values({ charId: char.id, templateId, qty: 1 });
+    res.json({
+      expGained: result.expGained,
+      linhThachGained: result.linhThachGained,
+      itemsGranted: result.itemsGranted,
+      isDaily: t.type === "grind",
+      message: `Hoàn thành ${t.name}! Nhận ${t.rewardExp} EXP và ${t.rewardLinhThach} Linh Thạch.`,
+    });
+  } catch (error) {
+    if (error instanceof RouteError) {
+      res.status(error.status).json(error.body);
+      return;
     }
-    grantedItems.push(templateId);
+    throw error;
   }
-
-  await Promise.allSettled([
-    t.rewardExp > 0 ? logEconomy({ charId: char.id, type: "exp_gain", amount: t.rewardExp, source: `mission:${t.code}`, balanceAfter: char.exp + t.rewardExp, meta: { missionName: t.name } }) : Promise.resolve(),
-    t.rewardLinhThach > 0 ? logEconomy({ charId: char.id, type: "linh_thach_gain", amount: t.rewardLinhThach, source: `mission:${t.code}`, balanceAfter: char.linhThach + t.rewardLinhThach, meta: { missionName: t.name } }) : Promise.resolve(),
-    grantPassXp(char.id, 30),
-  ]);
-
-  res.json({
-    expGained: t.rewardExp,
-    linhThachGained: t.rewardLinhThach,
-    itemsGranted: grantedItems,
-    isDaily: t.type === "grind",
-    message: `Hoàn thành ${t.name}! Nhận ${t.rewardExp} EXP và ${t.rewardLinhThach} Linh Thạch.`,
-  });
 });
 
 export default router;

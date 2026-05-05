@@ -444,3 +444,56 @@ cd artifacts/api-server && npx tsx src/seed.ts
 - Implement explicit 04:00 daily reset boundary.
 - Add DB transaction/idempotency hardening around mission completion reward grant.
 - Continue with achievement notification popup or NPC affinity after daily reset hardening.
+
+---
+
+## Session Update - 2026-05-06 03:49:33 +07:00
+
+### Task Done
+- Hardened mission completion reward claim against concurrent double-submit.
+
+### Files Read
+- `README.md`
+- `HANDOFF.md`
+- `replit.md`
+- `package.json`, `pnpm-workspace.yaml`, `tsconfig.json`, `tsconfig.base.json`
+- `artifacts/api-server/src/routes/mission.ts`
+- `artifacts/api-server/src/lib/economyLog.ts`
+- `artifacts/api-server/src/lib/grantPassXp.ts`
+- `lib/db/src/schema/missions.ts`
+- `lib/db/src/schema/characters.ts`
+- `lib/db/src/schema/inventory.ts`
+
+### Files Changed
+- `artifacts/api-server/src/routes/mission.ts`
+- `HANDOFF.md`
+
+### Logic New / Fixed
+- `POST /mission/:missionId/complete` now wraps mission progress update, character EXP/Linh Thach update, and reward item grant in a Drizzle transaction.
+- Added PostgreSQL `pg_advisory_xact_lock(hashtext(charId), hashtext(missionId))` so concurrent requests for the same character and mission serialize before reward state is re-read.
+- Mission progress and character balances are refetched inside the lock before reward grant.
+- Duplicate same-day claim still returns `ALREADY_CLAIMED`; stale daily grind claim still follows the daily reset rules.
+- Economy log and battle pass XP remain post-transaction best-effort side effects and use the committed balances returned by the transaction.
+
+### Commands Run
+- `git status --short --branch`
+- `git checkout main`
+- `git pull origin main`
+- `pnpm typecheck`
+- `pnpm --filter @workspace/scripts exec tsx src/smoke-test.ts`
+- `pnpm build`
+
+### Test / Build Result
+- PASS: `pnpm typecheck`
+- PASS: smoke test, `52 passed / 0 failed / 52 total`
+- PASS: `pnpm build` after the change.
+
+### Known Risks
+- Advisory lock is PostgreSQL-specific, which matches the repo stack but is not portable to SQLite.
+- There is still no DB unique constraint on `(char_id, template_id)` in the Drizzle schema; the advisory lock covers route concurrency but a future migration should enforce this at the DB layer.
+- Battle pass XP grant is outside the transaction and best effort, matching prior behavior.
+
+### Next Recommended Tasks
+- Add DB unique index/constraint for mission progress `(char_id, template_id)` with a migration.
+- Implement explicit 04:00 daily reset boundary.
+- Continue with achievement notification popup or NPC affinity.
