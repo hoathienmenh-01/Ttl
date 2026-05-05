@@ -1,11 +1,19 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useCharacter, useRest } from "@/lib/hooks";
+import { useAchievements, useCharacter, useRest } from "@/lib/hooks";
 import { clearToken } from "@/lib/api";
 import { ELEMENT_NAMES, ELEMENT_COLORS } from "@/lib/constants";
 import { toast } from "sonner";
 
 const REST_COOLDOWN_SECONDS = 120;
+const DAILY_RESET_HOUR = 4;
+
+function getDailyResetStart(now = new Date()): Date {
+  const resetStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), DAILY_RESET_HOUR, 0, 0, 0);
+  if (now < resetStart) return new Date(resetStart.getTime() - 24 * 60 * 60 * 1000);
+  return resetStart;
+}
+
 function useRestCooldown(lastRestAt: string | null | undefined): number {
   const [remaining, setRemaining] = useState(0);
   useEffect(() => {
@@ -75,6 +83,7 @@ export default function GameShell({ children, user }: Props) {
   const [location, setLocation] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { data: char } = useCharacter({ refetchInterval: 8000 });
+  const { data: achievementData } = useAchievements();
   const rest = useRest();
   const elColor    = ELEMENT_COLORS[char?.primaryElement ?? ""] || "#c9a84c";
   const restCooldown = useRestCooldown(char?.lastRestAt);
@@ -97,9 +106,10 @@ export default function GameShell({ children, user }: Props) {
   // Derived daily available check
   const isDailyAvailable = (() => {
     if (!char?.lastDailyClaimAt) return true;
-    const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-    return new Date(char.lastDailyClaimAt) < todayStart;
+    return new Date(char.lastDailyClaimAt) < getDailyResetStart();
   })();
+  const claimableAchievementCount = ((achievementData as any)?.achievements ?? [])
+    .filter((achievement: any) => achievement.status === "earned").length;
 
   function isActive(path: string, exact?: boolean) {
     if (exact) return location === path;
@@ -248,6 +258,7 @@ export default function GameShell({ children, user }: Props) {
                 </div>
                 {section.items.map(item => {
                   const active = isActive(item.path, (item as any).exact);
+                  const badgeCount = item.path === "/achievement" ? claimableAchievementCount : 0;
                   return (
                     <button
                       key={item.path}
@@ -259,7 +270,12 @@ export default function GameShell({ children, user }: Props) {
                       }`}
                     >
                       <span className="w-4 text-center flex-shrink-0 text-base leading-none" style={{ fontSize: "13px" }}>{item.icon}</span>
-                      <span className="tracking-wide leading-none">{item.label}</span>
+                      <span className="tracking-wide leading-none flex-1">{item.label}</span>
+                      {badgeCount > 0 && (
+                        <span className="min-w-5 h-4 px-1 rounded-full bg-emerald-900/40 border border-emerald-700/50 text-emerald-300 text-[10px] leading-4 text-center tabular-nums">
+                          {badgeCount}
+                        </span>
+                      )}
                     </button>
                   );
                 })}

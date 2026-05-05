@@ -636,3 +636,46 @@ cd artifacts/api-server && npx tsx src/seed.ts
 ### Next Recommended Tasks
 - Add an explicit duplicate cleanup/admin runbook if production data contains duplicates.
 - Continue with achievement notification popup or NPC affinity.
+
+---
+
+## Session Update - 2026-05-06 03:59:16 +07:00
+
+### Task Done
+- Added frontend achievement claim notification badge in the sidebar.
+- Fixed frontend daily check-in indicator to use the same 04:00 reset window as the server.
+
+### Files Read
+- `HANDOFF.md`
+- `artifacts/api-server/src/routes/achievement.ts`
+- `artifacts/api-server/src/lib/achievements.ts`
+- `artifacts/tu-tien-lo/src/pages/achievement.tsx`
+- `artifacts/tu-tien-lo/src/components/GameShell.tsx`
+- `artifacts/tu-tien-lo/src/lib/hooks.ts`
+
+### Files Changed
+- `artifacts/tu-tien-lo/src/components/GameShell.tsx`
+- `HANDOFF.md`
+
+### Logic New / Fixed
+- Game shell now queries achievements and shows a small count badge on the `Thành Tựu` sidebar item when rewards are claimable.
+- Client daily check-in indicator now uses a 04:00 reset window instead of midnight, matching backend daily reward behavior.
+- No reward or achievement claim logic moved to the client; frontend only displays server data and navigates/calls existing APIs.
+
+### Commands Run
+- `git pull origin main`
+- `pnpm typecheck`
+- `pnpm --filter @workspace/scripts exec tsx src/smoke-test.ts`
+
+### Test / Build Result
+- PASS: `pnpm typecheck`
+- PASS: smoke test, `58 passed / 0 failed / 58 total`
+- PASS: `pnpm build` after the change.
+
+### Known Risks
+- Game shell now calls `/achievement`, whose backend currently auto-checks and may create newly earned achievements as part of the GET.
+- Daily reset helper is duplicated client-side; if the server reset hour changes later, expose it via API or shared package.
+
+### Next Recommended Tasks
+- Move daily reset constants into a shared package if more frontend surfaces need them.
+- Add NPC affinity MVP or achievement toast when `newlyEarned` is returned.
