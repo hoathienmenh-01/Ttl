@@ -1,0 +1,1581 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Tu Tiên Lộ Game API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication
+  - name: character
+    description: Character management
+  - name: cultivation
+    description: Cultivation & realm progression
+  - name: inventory
+    description: Inventory management
+  - name: boss
+    description: Boss battles
+  - name: mission
+    description: Missions & quests
+  - name: chat
+    description: Chat system
+  - name: sect
+    description: Sect management
+  - name: market
+    description: Player market
+  - name: leaderboard
+    description: Rankings
+  - name: topup
+    description: Currency topup
+  - name: admin
+    description: Admin operations
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterBody"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /character:
+    get:
+      operationId: getCharacter
+      tags: [character]
+      summary: Get my character
+      responses:
+        "200":
+          description: Character data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Character"
+        "404":
+          description: No character yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    post:
+      operationId: createCharacter
+      tags: [character]
+      summary: Create character
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCharacterBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Character"
+
+  /character/stats:
+    get:
+      operationId: getCharacterStats
+      tags: [character]
+      summary: Get full computed stats
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CharacterStats"
+
+  /character/online:
+    get:
+      operationId: getOnlinePlayers
+      tags: [character]
+      summary: Get online player list
+      responses:
+        "200":
+          description: Online players
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlayerSummary"
+
+  /character/inspect/{characterId}:
+    get:
+      operationId: inspectCharacter
+      tags: [character]
+      parameters:
+        - name: characterId
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Inspect another player
+      responses:
+        "200":
+          description: Character summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Character"
+
+  /cultivation/start:
+    post:
+      operationId: startCultivation
+      tags: [cultivation]
+      summary: Start cultivation (enter meditation)
+      responses:
+        "200":
+          description: Started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CultivationStatus"
+
+  /cultivation/stop:
+    post:
+      operationId: stopCultivation
+      tags: [cultivation]
+      summary: Stop cultivation
+      responses:
+        "200":
+          description: Stopped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CultivationStatus"
+
+  /cultivation/breakthrough:
+    post:
+      operationId: attemptBreakthrough
+      tags: [cultivation]
+      summary: Attempt realm breakthrough
+      responses:
+        "200":
+          description: Breakthrough result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BreakthroughResult"
+
+  /cultivation/realms:
+    get:
+      operationId: getRealms
+      tags: [cultivation]
+      summary: Get all realm definitions
+      responses:
+        "200":
+          description: Realm list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RealmInfo"
+
+  /inventory:
+    get:
+      operationId: getInventory
+      tags: [inventory]
+      summary: Get my inventory
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Inventory
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryItem"
+
+  /inventory/{itemId}/use:
+    post:
+      operationId: useItem
+      tags: [inventory]
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Use an item
+      responses:
+        "200":
+          description: Item used
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UseItemResult"
+
+  /inventory/{itemId}/equip:
+    post:
+      operationId: equipItem
+      tags: [inventory]
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Equip an item
+      responses:
+        "200":
+          description: Equipped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /inventory/{itemId}/unequip:
+    post:
+      operationId: unequipItem
+      tags: [inventory]
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Unequip an item
+      responses:
+        "200":
+          description: Unequipped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /inventory/{itemId}/sell:
+    post:
+      operationId: sellItem
+      tags: [inventory]
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Sell an item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SellItemBody"
+      responses:
+        "200":
+          description: Sold
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /boss:
+    get:
+      operationId: getBosses
+      tags: [boss]
+      summary: Get boss list
+      responses:
+        "200":
+          description: Bosses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Boss"
+
+  /boss/{bossId}/attack:
+    post:
+      operationId: attackBoss
+      tags: [boss]
+      parameters:
+        - name: bossId
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Attack a boss
+      responses:
+        "200":
+          description: Combat result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CombatResult"
+
+  /mission:
+    get:
+      operationId: getMissions
+      tags: [mission]
+      summary: Get available missions
+      responses:
+        "200":
+          description: Missions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Mission"
+
+  /mission/{missionId}/accept:
+    post:
+      operationId: acceptMission
+      tags: [mission]
+      parameters:
+        - name: missionId
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Accept a mission
+      responses:
+        "200":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /mission/{missionId}/complete:
+    post:
+      operationId: completeMission
+      tags: [mission]
+      parameters:
+        - name: missionId
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Complete and claim a mission
+      responses:
+        "200":
+          description: Reward
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MissionReward"
+
+  /chat/messages:
+    get:
+      operationId: getChatMessages
+      tags: [chat]
+      summary: Get chat messages
+      parameters:
+        - name: channel
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [world, sect, private]
+            default: world
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatMessage"
+
+  /chat/send:
+    post:
+      operationId: sendChatMessage
+      tags: [chat]
+      summary: Send a chat message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendChatBody"
+      responses:
+        "200":
+          description: Sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessage"
+
+  /sect:
+    get:
+      operationId: getSects
+      tags: [sect]
+      summary: List sects
+      responses:
+        "200":
+          description: Sects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Sect"
+
+  /sect/mine:
+    get:
+      operationId: getMySect
+      tags: [sect]
+      summary: Get my sect info
+      responses:
+        "200":
+          description: Sect
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sect"
+
+  /sect/{sectId}/join:
+    post:
+      operationId: joinSect
+      tags: [sect]
+      parameters:
+        - name: sectId
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Join a sect
+      responses:
+        "200":
+          description: Joined
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /market:
+    get:
+      operationId: getMarketListings
+      tags: [market]
+      summary: Get market listings
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Listings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MarketListing"
+
+  /market/list:
+    post:
+      operationId: createMarketListing
+      tags: [market]
+      summary: List item on market
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateListingBody"
+      responses:
+        "201":
+          description: Listed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketListing"
+
+  /market/{listingId}/buy:
+    post:
+      operationId: buyMarketItem
+      tags: [market]
+      parameters:
+        - name: listingId
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Buy a market listing
+      responses:
+        "200":
+          description: Purchased
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [leaderboard]
+      summary: Get power leaderboard
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [power, realm, pvp]
+            default: power
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Leaderboard
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaderboardEntry"
+
+  /topup/request:
+    post:
+      operationId: requestTopup
+      tags: [topup]
+      summary: Submit a topup request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TopupRequestBody"
+      responses:
+        "201":
+          description: Request created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopupRequest"
+
+  /topup/history:
+    get:
+      operationId: getTopupHistory
+      tags: [topup]
+      summary: Get my topup history
+      responses:
+        "200":
+          description: History
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TopupRequest"
+
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Get admin dashboard stats
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
+  /admin/players:
+    get:
+      operationId: getAdminPlayers
+      tags: [admin]
+      summary: List all players
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Players
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminPlayerRow"
+
+  /admin/topup:
+    get:
+      operationId: getAdminTopups
+      tags: [admin]
+      summary: List pending topup requests
+      responses:
+        "200":
+          description: Topups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TopupRequest"
+
+  /admin/topup/{topupId}/approve:
+    post:
+      operationId: approveTopup
+      tags: [admin]
+      parameters:
+        - name: topupId
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Approve a topup request
+      responses:
+        "200":
+          description: Approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+      required:
+        - error
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    RegisterBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        username:
+          type: string
+          minLength: 3
+          maxLength: 20
+      required:
+        - email
+        - password
+        - username
+
+    LoginBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/UserProfile"
+      required:
+        - token
+        - user
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        username:
+          type: string
+        role:
+          type: string
+          enum: [player, mod, admin]
+        hasCharacter:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - username
+        - role
+        - hasCharacter
+        - createdAt
+
+    CreateCharacterBody:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 20
+      required:
+        - name
+
+    Character:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        realmKey:
+          type: string
+        realmName:
+          type: string
+        realmStage:
+          type: integer
+        title:
+          type: string
+          nullable: true
+        exp:
+          type: integer
+        expRequired:
+          type: integer
+        level:
+          type: integer
+        hp:
+          type: integer
+        hpMax:
+          type: integer
+        mp:
+          type: integer
+        mpMax:
+          type: integer
+        stamina:
+          type: integer
+        staminaMax:
+          type: integer
+        power:
+          type: integer
+        spirit:
+          type: integer
+        speed:
+          type: integer
+        luck:
+          type: integer
+        daoVan:
+          type: integer
+        atk:
+          type: integer
+        def:
+          type: integer
+        crit:
+          type: number
+        linhThach:
+          type: integer
+        tienNgoc:
+          type: integer
+        congHien:
+          type: integer
+        primaryElement:
+          type: string
+          nullable: true
+        spiritualRootGrade:
+          type: string
+          nullable: true
+        cultivating:
+          type: boolean
+        sectId:
+          type: string
+          nullable: true
+        sectName:
+          type: string
+          nullable: true
+        pvpWins:
+          type: integer
+        pvpLosses:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - realmKey
+        - realmName
+        - realmStage
+        - exp
+        - expRequired
+        - level
+        - hp
+        - hpMax
+        - mp
+        - mpMax
+        - stamina
+        - staminaMax
+        - power
+        - spirit
+        - speed
+        - luck
+        - daoVan
+        - atk
+        - def
+        - crit
+        - linhThach
+        - tienNgoc
+        - congHien
+        - cultivating
+        - pvpWins
+        - pvpLosses
+        - createdAt
+
+    CharacterStats:
+      type: object
+      properties:
+        totalPower:
+          type: integer
+        atk:
+          type: integer
+        magicAtk:
+          type: integer
+        def:
+          type: integer
+        crit:
+          type: number
+        critDmg:
+          type: number
+        pierce:
+          type: number
+        speed:
+          type: integer
+        hpMax:
+          type: integer
+        mpMax:
+          type: integer
+        elementalResist:
+          type: number
+        realmMultiplier:
+          type: number
+      required:
+        - totalPower
+        - atk
+        - magicAtk
+        - def
+        - crit
+        - critDmg
+        - pierce
+        - speed
+        - hpMax
+        - mpMax
+        - elementalResist
+        - realmMultiplier
+
+    PlayerSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        realmName:
+          type: string
+        realmStage:
+          type: integer
+        power:
+          type: integer
+        primaryElement:
+          type: string
+          nullable: true
+        cultivating:
+          type: boolean
+        sectName:
+          type: string
+          nullable: true
+      required:
+        - id
+        - name
+        - realmName
+        - realmStage
+        - power
+        - cultivating
+
+    CultivationStatus:
+      type: object
+      properties:
+        cultivating:
+          type: boolean
+        expPerTick:
+          type: integer
+        message:
+          type: string
+      required:
+        - cultivating
+        - expPerTick
+        - message
+
+    BreakthroughResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        newRealmKey:
+          type: string
+          nullable: true
+        newRealmName:
+          type: string
+          nullable: true
+        newRealmStage:
+          type: integer
+          nullable: true
+        expGained:
+          type: integer
+      required:
+        - success
+        - message
+        - expGained
+
+    RealmInfo:
+      type: object
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        tier:
+          type: string
+        order:
+          type: integer
+        stages:
+          type: integer
+        expCost:
+          type: integer
+        description:
+          type: string
+      required:
+        - key
+        - name
+        - tier
+        - order
+        - stages
+        - expCost
+        - description
+
+    InventoryItem:
+      type: object
+      properties:
+        id:
+          type: string
+        templateId:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        quality:
+          type: string
+          enum: [pham, linh, huyen, tien, than]
+        qty:
+          type: integer
+        enhanceLv:
+          type: integer
+        equipped:
+          type: boolean
+        slot:
+          type: string
+          nullable: true
+        iconUrl:
+          type: string
+          nullable: true
+        description:
+          type: string
+        baseStats:
+          type: object
+          additionalProperties: true
+      required:
+        - id
+        - templateId
+        - name
+        - type
+        - quality
+        - qty
+        - enhanceLv
+        - equipped
+        - description
+        - baseStats
+
+    UseItemResult:
+      type: object
+      properties:
+        message:
+          type: string
+        effects:
+          type: array
+          items:
+            type: string
+      required:
+        - message
+        - effects
+
+    SellItemBody:
+      type: object
+      properties:
+        qty:
+          type: integer
+          minimum: 1
+      required:
+        - qty
+
+    Boss:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        element:
+          type: string
+          nullable: true
+        hpCurrent:
+          type: integer
+        hpMax:
+          type: integer
+        power:
+          type: integer
+        minRealm:
+          type: string
+        zone:
+          type: string
+        isWorldBoss:
+          type: boolean
+        spawnedAt:
+          type: string
+          format: date-time
+          nullable: true
+        deadAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - name
+        - description
+        - hpCurrent
+        - hpMax
+        - power
+        - minRealm
+        - zone
+        - isWorldBoss
+
+    CombatResult:
+      type: object
+      properties:
+        playerDmg:
+          type: integer
+        bossDmg:
+          type: integer
+        bossKilled:
+          type: boolean
+        drops:
+          type: array
+          items:
+            type: string
+        expGained:
+          type: integer
+        linhThachGained:
+          type: integer
+        message:
+          type: string
+        logs:
+          type: array
+          items:
+            type: string
+      required:
+        - playerDmg
+        - bossDmg
+        - bossKilled
+        - drops
+        - expGained
+        - linhThachGained
+        - message
+        - logs
+
+    Mission:
+      type: object
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+          enum: [main, realm, sect, npc, grind, event]
+        npcName:
+          type: string
+          nullable: true
+        realmRequired:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [available, accepted, completed, claimed, locked]
+        rewardExp:
+          type: integer
+        rewardLinhThach:
+          type: integer
+        rewardItems:
+          type: array
+          items:
+            type: string
+        progress:
+          type: integer
+        progressMax:
+          type: integer
+      required:
+        - id
+        - code
+        - name
+        - description
+        - type
+        - status
+        - rewardExp
+        - rewardLinhThach
+        - rewardItems
+        - progress
+        - progressMax
+
+    MissionReward:
+      type: object
+      properties:
+        expGained:
+          type: integer
+        linhThachGained:
+          type: integer
+        itemsGranted:
+          type: array
+          items:
+            type: string
+        message:
+          type: string
+      required:
+        - expGained
+        - linhThachGained
+        - itemsGranted
+        - message
+
+    ChatMessage:
+      type: object
+      properties:
+        id:
+          type: string
+        channel:
+          type: string
+        senderName:
+          type: string
+        senderRealm:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - channel
+        - senderName
+        - senderRealm
+        - content
+        - createdAt
+
+    SendChatBody:
+      type: object
+      properties:
+        channel:
+          type: string
+          enum: [world, sect, private]
+          default: world
+        content:
+          type: string
+          maxLength: 300
+        targetId:
+          type: string
+          nullable: true
+      required:
+        - channel
+        - content
+
+    Sect:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        level:
+          type: integer
+        memberCount:
+          type: integer
+        maxMembers:
+          type: integer
+        treasuryLinhThach:
+          type: integer
+        description:
+          type: string
+        leaderId:
+          type: string
+          nullable: true
+        leaderName:
+          type: string
+          nullable: true
+      required:
+        - id
+        - name
+        - level
+        - memberCount
+        - maxMembers
+        - treasuryLinhThach
+        - description
+
+    MarketListing:
+      type: object
+      properties:
+        id:
+          type: string
+        sellerName:
+          type: string
+        itemName:
+          type: string
+        itemType:
+          type: string
+        quality:
+          type: string
+        price:
+          type: integer
+        qty:
+          type: integer
+        enhanceLv:
+          type: integer
+        description:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - sellerName
+        - itemName
+        - itemType
+        - quality
+        - price
+        - qty
+        - enhanceLv
+        - description
+        - createdAt
+
+    CreateListingBody:
+      type: object
+      properties:
+        inventoryItemId:
+          type: string
+        price:
+          type: integer
+          minimum: 1
+        qty:
+          type: integer
+          minimum: 1
+      required:
+        - inventoryItemId
+        - price
+        - qty
+
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+        characterId:
+          type: string
+        name:
+          type: string
+        realmName:
+          type: string
+        realmStage:
+          type: integer
+        power:
+          type: integer
+        primaryElement:
+          type: string
+          nullable: true
+        sectName:
+          type: string
+          nullable: true
+        pvpWins:
+          type: integer
+      required:
+        - rank
+        - characterId
+        - name
+        - realmName
+        - realmStage
+        - power
+        - pvpWins
+
+    TopupRequestBody:
+      type: object
+      properties:
+        amount:
+          type: integer
+          minimum: 10000
+          description: VND amount
+        transferCode:
+          type: string
+      required:
+        - amount
+        - transferCode
+
+    TopupRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        amount:
+          type: integer
+        tienNgocGranted:
+          type: integer
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        transferCode:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        processedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - amount
+        - tienNgocGranted
+        - status
+        - transferCode
+        - createdAt
+
+    AdminStats:
+      type: object
+      properties:
+        totalUsers:
+          type: integer
+        onlineNow:
+          type: integer
+        totalCharacters:
+          type: integer
+        pendingTopups:
+          type: integer
+        totalTopupVnd:
+          type: integer
+        activeBosskills24h:
+          type: integer
+        newUsersToday:
+          type: integer
+        cultivatingNow:
+          type: integer
+      required:
+        - totalUsers
+        - onlineNow
+        - totalCharacters
+        - pendingTopups
+        - totalTopupVnd
+        - activeBosskills24h
+        - newUsersToday
+        - cultivatingNow
+
+    AdminPlayerRow:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        username:
+          type: string
+        role:
+          type: string
+        characterName:
+          type: string
+          nullable: true
+        realmName:
+          type: string
+          nullable: true
+        power:
+          type: integer
+          nullable: true
+        linhThach:
+          type: integer
+          nullable: true
+        banned:
+          type: boolean
+        lastLoginAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - username
+        - role
+        - banned
+        - createdAt

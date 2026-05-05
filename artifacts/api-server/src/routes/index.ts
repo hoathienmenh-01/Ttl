@@ -1,0 +1,46 @@
+import { Router, type IRouter } from "express";
+import healthRouter from "./health";
+import authRouter from "./auth";
+import characterRouter from "./character";
+import cultivationRouter from "./cultivation";
+import inventoryRouter from "./inventory";
+import bossRouter from "./boss";
+import missionRouter from "./mission";
+import chatRouter from "./chat";
+import sectRouter from "./sect";
+import marketRouter from "./market";
+import leaderboardRouter from "./leaderboard";
+import topupRouter from "./topup";
+import adminRouter from "./admin";
+import npcRouter from "./npc";
+import skillRouter from "./skill";
+import dungeonRouter from "./dungeon";
+import achievementRouter from "./achievement";
+import alchemyRouter from "./alchemy";
+import battlePassRouter from "./battle-pass";
+import economyLogRouter from "./economy-log";
+
+const router: IRouter = Router();
+
+router.use(healthRouter);
+router.use(authRouter);
+router.use(characterRouter);
+router.use(cultivationRouter);
+router.use(inventoryRouter);
+router.use(bossRouter);
+router.use(missionRouter);
+router.use(chatRouter);
+router.use(sectRouter);
+router.use(marketRouter);
+router.use(leaderboardRouter);
+router.use(topupRouter);
+router.use(adminRouter);
+router.use(npcRouter);
+router.use(skillRouter);
+router.use(dungeonRouter);
+router.use(achievementRouter);
+router.use(alchemyRouter);
+router.use(battlePassRouter);
+router.use(economyLogRouter);
+
+export default router;
