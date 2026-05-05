@@ -3,9 +3,14 @@ import { db } from "@workspace/db";
 import { missionTemplatesTable, missionProgressTable, charactersTable, inventoryItemsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
-import { isSameDay } from "../lib/balance";
 import { logEconomy } from "../lib/economyLog";
 import { grantPassXp } from "../lib/grantPassXp";
+import {
+  dailyGrindResetPatch,
+  getDailyGrindAwareProgress,
+  getDailyGrindAwareStatus,
+  isStaleDailyGrindClaim,
+} from "../lib/dailyMission";
 
 const router = Router();
 
@@ -28,13 +33,7 @@ router.get("/mission", requireAuth, async (req, res) => {
 
   res.json(templates.map(t => {
     const prog = progressMap.get(t.id);
-    let status = prog?.status ?? "available";
-
-    if (t.type === "grind" && status === "claimed" && prog?.claimedAt) {
-      if (!isSameDay(prog.claimedAt, now)) {
-        status = "available";
-      }
-    }
+    const status = getDailyGrindAwareStatus(t, prog, now);
 
     return {
       id: t.id, code: t.code, name: t.name, description: t.description,
@@ -42,8 +41,8 @@ router.get("/mission", requireAuth, async (req, res) => {
       objectiveType: t.objectiveType ?? null,
       status,
       rewardExp: t.rewardExp, rewardLinhThach: t.rewardLinhThach, rewardItems: t.rewardItems,
-      progress: prog?.progress ?? 0, progressMax: t.progressMax,
-      claimedAt: prog?.claimedAt?.toISOString() ?? null,
+      progress: getDailyGrindAwareProgress(t, prog, now), progressMax: t.progressMax,
+      claimedAt: status === "available" ? null : (prog?.claimedAt?.toISOString() ?? null),
     };
   }));
 });
@@ -65,6 +64,14 @@ router.post("/mission/:missionId/accept", requireAuth, async (req, res) => {
     )).limit(1);
 
   if (existing.length) {
+    const existingProgress = existing[0];
+    if (isStaleDailyGrindClaim(templates[0], existingProgress)) {
+      await db.update(missionProgressTable).set(dailyGrindResetPatch())
+        .where(eq(missionProgressTable.id, existingProgress.id));
+      res.json({ message: `Đã nhận lại nhiệm vụ ${templates[0].name} cho hôm nay.` });
+      return;
+    }
+
     res.json({ message: "Đã nhận nhiệm vụ này rồi." });
     return;
   }
@@ -98,7 +105,7 @@ router.post("/mission/:missionId/complete", requireAuth, async (req, res) => {
   const now  = new Date();
 
   if (prog?.status === "claimed") {
-    if (t.type === "grind" && prog.claimedAt && !isSameDay(prog.claimedAt, now)) {
+    if (isStaleDailyGrindClaim(t, prog, now)) {
       // Daily reset — fall through
     } else {
       res.status(400).json({ error: "Nhiệm vụ đã nhận thưởng", code: "ALREADY_CLAIMED" });
@@ -114,7 +121,7 @@ router.post("/mission/:missionId/complete", requireAuth, async (req, res) => {
       });
       return;
     }
-    const isGrindReset = t.type === "grind" && prog.status === "claimed" && prog.claimedAt && !isSameDay(prog.claimedAt, now);
+    const isGrindReset = isStaleDailyGrindClaim(t, prog, now);
     if (!isGrindReset && prog.status !== "completed") {
       const remaining = t.progressMax - (prog.progress ?? 0);
       res.status(400).json({

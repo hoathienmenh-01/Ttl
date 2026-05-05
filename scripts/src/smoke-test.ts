@@ -6,6 +6,11 @@
 
 import { REALMS, getRealmByKey, getNextRealm, getRealmName, computePower } from "../../artifacts/api-server/src/lib/realms.js";
 import { resolveSkillCast } from "../../artifacts/api-server/src/lib/skillCombat.js";
+import {
+  getDailyGrindAwareProgress,
+  getDailyGrindAwareStatus,
+  isStaleDailyGrindClaim,
+} from "../../artifacts/api-server/src/lib/dailyMission.js";
 
 let passed = 0;
 let failed = 0;
@@ -223,6 +228,26 @@ const cooldownCast = resolveSkillCast({
   nextAvailableRound: 3,
 });
 assert("Đang cooldown thì không cast skill", cooldownCast.skill === null);
+
+// ── 12. Daily grind mission reset ─────────────────────────────────────────
+console.log("\n[12] Daily Grind Mission Reset");
+const dailyTemplate = { type: "grind" };
+const today = new Date("2026-05-06T09:00:00.000Z");
+const yesterdayClaim = {
+  status: "claimed" as const,
+  progress: 3,
+  claimedAt: new Date("2026-05-05T09:00:00.000Z"),
+};
+const todayClaim = {
+  status: "claimed" as const,
+  progress: 3,
+  claimedAt: new Date("2026-05-06T08:00:00.000Z"),
+};
+assert("Grind claimed hôm qua được xem là stale", isStaleDailyGrindClaim(dailyTemplate, yesterdayClaim, today));
+assert("Grind claimed hôm nay không reset", !isStaleDailyGrindClaim(dailyTemplate, todayClaim, today));
+assert("Stale grind hiển thị available", getDailyGrindAwareStatus(dailyTemplate, yesterdayClaim, today) === "available");
+assert("Stale grind progress reset về 0", getDailyGrindAwareProgress(dailyTemplate, yesterdayClaim, today) === 0);
+assert("Non-grind không bị daily reset", getDailyGrindAwareStatus({ type: "main" }, yesterdayClaim, today) === "claimed");
 
 // ── Summary ───────────────────────────────────────────────────────────────────
 console.log(`\n${"─".repeat(50)}`);

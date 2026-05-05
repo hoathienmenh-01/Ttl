@@ -383,3 +383,64 @@ cd artifacts/api-server && npx tsx src/seed.ts
 # Restart API server (required after any backend change)
 # → Use restart_workflow "artifacts/api-server: API Server"
 ```
+
+---
+
+## Session Update - 2026-05-06 03:41:48 +07:00
+
+### Task Done
+- Fixed daily grind mission reset consistency for mission and NPC quest APIs.
+- Added pure smoke coverage for daily grind reset behavior.
+
+### Files Read
+- `README.md`
+- `HANDOFF.md`
+- `replit.md`
+- `AGENTS.md`
+- `docs/AI_CONTEXT_MIN.md`
+- `docs/TECH_STACK_VA_DATA_MODEL.md`
+- `docs/KICH_BAN_BUILD_VA_PROMPT_AI.md`
+- `package.json`, `pnpm-workspace.yaml`, `tsconfig.json`, `tsconfig.base.json`, `.replit`
+- `artifacts/api-server/src/routes/mission.ts`
+- `artifacts/api-server/src/routes/npc.ts`
+- `artifacts/api-server/src/lib/missionProgress.ts`
+- `lib/db/src/schema/missions.ts`
+- `scripts/src/smoke-test.ts`
+
+### Files Changed
+- `artifacts/api-server/src/lib/dailyMission.ts`
+- `artifacts/api-server/src/lib/missionProgress.ts`
+- `artifacts/api-server/src/routes/mission.ts`
+- `artifacts/api-server/src/routes/npc.ts`
+- `scripts/src/smoke-test.ts`
+- `HANDOFF.md`
+
+### Logic New / Fixed
+- Stale daily grind claim now means `type=grind`, `status=claimed`, and `claimedAt` is not today.
+- Stale grind quests now display as `available` with progress `0` and no visible `claimedAt`.
+- `POST /mission/:missionId/accept` reopens yesterday's claimed grind row instead of returning "already accepted".
+- NPC quest list now uses the same daily reset helper as `/mission`.
+- `trackMissionProgress()` clears stale `claimedAt`/`completedAt` when today's objective progress reactivates a claimed grind quest.
+
+### Commands Run
+- `git pull origin main`
+- `pnpm install`
+- `pnpm typecheck`
+- `pnpm --filter @workspace/scripts exec tsx src/smoke-test.ts`
+- `pnpm build`
+
+### Test / Build Result
+- PASS: `pnpm install`
+- PASS: `pnpm typecheck`
+- PASS: smoke test, `52 passed / 0 failed / 52 total`
+- PASS: `pnpm build` after the change.
+
+### Known Risks
+- Daily reset still uses local calendar day via existing `isSameDay()`, not a configured 04:00 reset window.
+- Mission completion reward grant is still not wrapped in a DB transaction; high-concurrency double-submit hardening remains a later task.
+- Vite build has an existing frontend chunk-size warning over 500 kB.
+
+### Next Recommended Tasks
+- Implement explicit 04:00 daily reset boundary.
+- Add DB transaction/idempotency hardening around mission completion reward grant.
+- Continue with achievement notification popup or NPC affinity after daily reset hardening.

@@ -1,7 +1,7 @@
 import { db } from "@workspace/db";
 import { missionTemplatesTable, missionProgressTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
-import { isSameDay } from "./balance";
+import { isStaleDailyGrindClaim } from "./dailyMission";
 
 /**
  * Auto-track mission progress by objective type.
@@ -41,13 +41,11 @@ export async function trackMissionProgress(
     let currentProgress = prog.progress;
     let currentStatus = prog.status;
 
+    const wasStaleDailyGrind = isStaleDailyGrindClaim(t, prog, now);
     if (currentStatus === "claimed") {
-      if (t.type === "grind" && prog.claimedAt && !isSameDay(prog.claimedAt, now)) {
-        currentProgress = 0;
-        currentStatus = "accepted";
-      } else {
-        continue;
-      }
+      if (!wasStaleDailyGrind) continue;
+      currentProgress = 0;
+      currentStatus = "accepted";
     }
 
     if (currentStatus !== "accepted" && currentStatus !== "completed") continue;
@@ -62,6 +60,8 @@ export async function trackMissionProgress(
       .set({
         progress: newProgress,
         status: newStatus,
+        ...(wasStaleDailyGrind ? { claimedAt: null } : {}),
+        ...(wasStaleDailyGrind && !isNowComplete ? { completedAt: null } : {}),
         ...(isNowComplete && !wasAlreadyComplete ? { completedAt: now } : {}),
       })
       .where(eq(missionProgressTable.id, prog.id));

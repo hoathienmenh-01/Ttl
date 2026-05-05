@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { npcsTable, missionTemplatesTable, missionProgressTable, charactersTable } from "@workspace/db";
 import { eq, inArray, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
+import { getDailyGrindAwareProgress, getDailyGrindAwareStatus } from "../lib/dailyMission";
 
 const router = Router();
 
@@ -41,18 +42,18 @@ router.get("/npc/:npcId/quests", requireAuth, async (req, res) => {
   const templates = await db.select().from(missionTemplatesTable).where(inArray(missionTemplatesTable.id, questIds));
   const progresses = await db.select().from(missionProgressTable).where(eq(missionProgressTable.charId, char.id));
   const progressMap = new Map(progresses.map(p => [p.templateId, p]));
+  const now = new Date();
 
   res.json(templates.map(t => {
     const prog = progressMap.get(t.id);
-    const claimedToday = t.type === "grind" && prog?.claimedAt && (new Date(prog.claimedAt).toDateString() === new Date().toDateString());
-    const status = t.type === "grind" && prog?.status === "claimed" && !claimedToday ? "available" : (prog?.status ?? "available");
+    const status = getDailyGrindAwareStatus(t, prog, now);
     return {
       id: t.id, code: t.code, name: t.name, description: t.description,
       type: t.type, npcName: t.npcName,
       availableStage: t.availableStage,
       status,
       rewardExp: t.rewardExp, rewardLinhThach: t.rewardLinhThach, rewardItems: t.rewardItems,
-      progress: prog?.progress ?? 0, progressMax: t.progressMax,
+      progress: getDailyGrindAwareProgress(t, prog, now), progressMax: t.progressMax,
     };
   }).filter(q => q.availableStage === "all" || q.availableStage === stage));
 });
