@@ -587,3 +587,52 @@ cd artifacts/api-server && npx tsx src/seed.ts
 ### Next Recommended Tasks
 - Add a preflight cleanup/check script for duplicate `mission_progress` rows before DB push.
 - Continue with achievement notification popup or NPC affinity.
+
+---
+
+## Session Update - 2026-05-06 03:57:54 +07:00
+
+### Task Done
+- Added DB preflight script for duplicate mission progress rows before applying the unique index.
+- Fixed root `preinstall` to be cross-platform on Windows by replacing `sh` with a Node command.
+
+### Files Read
+- `HANDOFF.md`
+- `scripts/package.json`
+- `scripts/tsconfig.json`
+- `lib/db/src/index.ts`
+- `lib/db/src/schema/index.ts`
+
+### Files Changed
+- `package.json`
+- `scripts/package.json`
+- `scripts/src/check-mission-progress-duplicates.ts`
+- `HANDOFF.md`
+
+### Logic New / Fixed
+- New script: `pnpm --filter @workspace/scripts run check:mission-progress`.
+- The script requires `DATABASE_URL`, queries `mission_progress`, and exits non-zero if duplicate `(char_id, template_id)` rows exist.
+- Root `preinstall` now removes unwanted lockfiles and enforces pnpm using Node, avoiding the previous Windows `sh` failure.
+
+### Commands Run
+- `git pull origin main`
+- `pnpm install`
+- `pnpm typecheck`
+- `pnpm --filter @workspace/scripts exec tsx src/smoke-test.ts`
+- `pnpm --filter @workspace/scripts run check:mission-progress`
+- `pnpm build`
+
+### Test / Build Result
+- PASS: `pnpm install`
+- PASS: `pnpm typecheck`
+- PASS: smoke test, `58 passed / 0 failed / 58 total`
+- PASS: `pnpm build`
+- EXPECTED FAIL/BLOCKED: `check:mission-progress` exits 2 because this local shell has no `DATABASE_URL`.
+
+### Known Risks
+- The preflight script must be run in an environment with `DATABASE_URL` before applying the unique index to an existing DB.
+- The script reports duplicates but does not delete or merge rows automatically.
+
+### Next Recommended Tasks
+- Add an explicit duplicate cleanup/admin runbook if production data contains duplicates.
+- Continue with achievement notification popup or NPC affinity.
