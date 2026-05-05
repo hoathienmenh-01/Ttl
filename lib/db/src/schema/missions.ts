@@ -1,4 +1,4 @@
-import { pgTable, text, integer, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, timestamp, pgEnum, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -33,7 +33,9 @@ export const missionProgressTable = pgTable("mission_progress", {
   acceptedAt: timestamp("accepted_at"),
   completedAt: timestamp("completed_at"),
   claimedAt: timestamp("claimed_at"),
-});
+}, (table) => [
+  uniqueIndex("mission_progress_char_template_unique").on(table.charId, table.templateId),
+]);
 
 export const insertMissionProgressSchema = createInsertSchema(missionProgressTable).omit({ id: true });
 export type InsertMissionProgress = z.infer<typeof insertMissionProgressSchema>;

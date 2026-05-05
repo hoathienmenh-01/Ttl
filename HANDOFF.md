@@ -546,3 +546,44 @@ cd artifacts/api-server && npx tsx src/seed.ts
 ### Next Recommended Tasks
 - Add DB unique index/constraint for mission progress `(char_id, template_id)` with a migration.
 - Continue with achievement notification popup or NPC affinity.
+
+---
+
+## Session Update - 2026-05-06 03:54:04 +07:00
+
+### Task Done
+- Added schema-level unique index for mission progress per character and mission template.
+
+### Files Read
+- `README.md`
+- `HANDOFF.md`
+- `replit.md`
+- `lib/db/drizzle.config.ts`
+- `lib/db/package.json`
+- `lib/db/src/schema/missions.ts`
+
+### Files Changed
+- `lib/db/src/schema/missions.ts`
+- `HANDOFF.md`
+
+### Logic New / Fixed
+- `mission_progress` now declares `mission_progress_char_template_unique` on `(char_id, template_id)` in Drizzle schema.
+- This aligns the database schema source-of-truth with route-level idempotency and prevents duplicate progress rows after the next Drizzle schema push.
+
+### Commands Run
+- `git pull origin main`
+- `pnpm typecheck`
+- `pnpm --filter @workspace/scripts exec tsx src/smoke-test.ts`
+
+### Test / Build Result
+- PASS: `pnpm typecheck`
+- PASS: smoke test, `58 passed / 0 failed / 58 total`
+- PASS: `pnpm build` after the change.
+
+### Known Risks
+- Existing databases with duplicate `(char_id, template_id)` mission progress rows must be cleaned before applying the unique index.
+- Repo uses `drizzle-kit push`, not checked-in migration files, so deployment must run the schema push step explicitly.
+
+### Next Recommended Tasks
+- Add a preflight cleanup/check script for duplicate `mission_progress` rows before DB push.
+- Continue with achievement notification popup or NPC affinity.
