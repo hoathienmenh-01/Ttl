@@ -16,6 +16,7 @@ import { checkAndAwardAchievements } from "../lib/achievements";
 import { trackMissionProgress } from "../lib/missionProgress";
 import { logEconomy } from "../lib/economyLog";
 import { grantPassXp } from "../lib/grantPassXp";
+import { resolveSkillCast } from "../lib/skillCombat";
 
 const router = Router();
 
@@ -97,24 +98,22 @@ router.post("/dungeon/:dungeonId/enter", requireAuth, async (req, res) => {
     ? `Linh căn ${rootGrade === "epic" ? "Thiên Phú" : rootGrade === "rare" ? "Ưu Tú" : "Lương Hảo"} — ATK +${Math.round((rootCombatMod - 1) * 100)}%.`
     : "";
 
-  // ── Skill bonus ───────────────────────────────────────────────────────────
+  // ── Learned combat skills ─────────────────────────────────────────────────
   const skills = await getCharSkills(char.id);
-  let skillBonus = 0;
-  let skillLog = "";
-  const matchingSkills = skills.filter(s => s.element === playerEl || s.element === dunEl);
-  if (matchingSkills.length > 0) {
-    skillBonus = matchingSkills.reduce((acc, s) => acc + ((s.damageMultiplier ?? 1) - 1) * 50, 0);
-    const skillNames = matchingSkills.map(s => s.name).join(", ");
-    skillLog = `Pháp thuật kích hoạt: ${skillNames} (+${skillBonus} ATK).`;
-  }
+  const attackSkillNames = skills
+    .filter(s => s.type === "attack" && (s.damageMultiplier ?? 1) > 1)
+    .map(s => s.name);
 
   // ── Combat simulation ─────────────────────────────────────────────────────
   const stages = dungeon.stages ?? 3;
   const logs: string[] = [`Vào bí cảnh: ${dungeon.name}. ${elementMsg}`];
   if (rootCombatMsg) logs.push(rootCombatMsg);
-  if (skillLog) logs.push(skillLog);
+  if (attackSkillNames.length) logs.push(`Pháp thuật sẵn sàng: ${attackSkillNames.join(", ")}.`);
 
   let charHp = char.hp;
+  let charMp = char.mp;
+  let combatRound = 0;
+  let nextSkillRound = 1;
   let totalExpGained = 0;
   let totalLinhThach = 0;
   let victory = true;
@@ -129,9 +128,24 @@ router.post("/dungeon/:dungeonId/enter", requireAuth, async (req, res) => {
     logs.push(`${isBoss ? "★ BOSS" : "—"} ${label} xuất hiện (HP: ${monHp})!`);
     while (currentMonHp > 0 && charHp > 0 && round < maxRounds) {
       round++;
-      const effectiveAtk = Math.round((char.atk + skillBonus) * rootCombatMod);
+      combatRound++;
+      const skillCast = resolveSkillCast({
+        learnedSkills: skills,
+        playerElement: playerEl,
+        targetElement: dunEl,
+        spiritualRootGrade: rootGrade,
+        mpRemaining: charMp,
+        round: combatRound,
+        nextAvailableRound: nextSkillRound,
+      });
+      if (skillCast.skill) {
+        charMp = Math.max(0, charMp - skillCast.mpCost);
+        nextSkillRound = combatRound + skillCast.cooldownRounds;
+        if (skillCast.log) logs.push(skillCast.log);
+      }
+      const effectiveAtk = Math.round(char.atk * rootCombatMod);
       const baseDmg = Math.max(1, effectiveAtk - Math.floor(monDef * 0.3));
-      const playerDmg = Math.round(baseDmg * elementMod * (0.85 + Math.random() * 0.3));
+      const playerDmg = Math.round(baseDmg * skillCast.damageMultiplier * elementMod * (0.85 + Math.random() * 0.3));
       currentMonHp = Math.max(0, currentMonHp - playerDmg);
       if (currentMonHp > 0) {
         const monDmg = Math.max(1, Math.round(monAtk * (0.8 + Math.random() * 0.4) - char.def * 0.4));
@@ -216,6 +230,7 @@ router.post("/dungeon/:dungeonId/enter", requireAuth, async (req, res) => {
     exp:      char.exp + totalExpGained,
     linhThach: newLinhThach,
     hp:       finalHp,
+    mp:       charMp,
     stamina:  finalStamina,
     dungeonClears: victory ? char.dungeonClears + 1 : char.dungeonClears,
     updatedAt: new Date(),
@@ -238,6 +253,7 @@ router.post("/dungeon/:dungeonId/enter", requireAuth, async (req, res) => {
     expGained: totalExpGained,
     linhThachGained: totalLinhThach,
     hpRemaining: finalHp,
+    mpRemaining: charMp,
     staminaRemaining: finalStamina,
     staminaCost,
     elementMessage: elementMsg,

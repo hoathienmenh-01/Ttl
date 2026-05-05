@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { bossTemplatesTable, bossSpawnsTable, bossAttackLogsTable, charactersTable, inventoryItemsTable, itemTemplatesTable } from "@workspace/db";
+import {
+  bossTemplatesTable, bossSpawnsTable, bossAttackLogsTable, charactersTable,
+  inventoryItemsTable, itemTemplatesTable, characterSkillsTable, skillTemplatesTable,
+} from "@workspace/db";
 import { eq, isNull, and, gt } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { getRealmByKey, computePower } from "../lib/realms";
@@ -9,12 +12,22 @@ import { checkAndAwardAchievements } from "../lib/achievements";
 import { trackMissionProgress } from "../lib/missionProgress";
 import { logEconomy } from "../lib/economyLog";
 import { grantBattlePassXp } from "../lib/battlePassXp";
+import { resolveSkillCast } from "../lib/skillCombat";
 
 const router = Router();
 
 async function getChar(userId: string) {
   const chars = await db.select().from(charactersTable).where(eq(charactersTable.userId, userId)).limit(1);
   return chars[0] ?? null;
+}
+
+async function getCharSkills(charId: string) {
+  const rows = await db
+    .select({ skill: skillTemplatesTable })
+    .from(characterSkillsTable)
+    .innerJoin(skillTemplatesTable, eq(characterSkillsTable.skillId, skillTemplatesTable.id))
+    .where(eq(characterSkillsTable.charId, charId));
+  return rows.map(r => r.skill);
 }
 
 async function ensureBossSpawns() {
@@ -69,9 +82,19 @@ router.post("/boss/:bossId/attack", requireAuth, async (req, res) => {
   const critChance = char.crit;
   const isCrit = Math.random() < critChance;
   const rootCombatMod = ROOT_COMBAT_MULTIPLIER[char.spiritualRootGrade ?? "common"] ?? 1.0;
+  const skills = await getCharSkills(char.id);
+  const skillCast = resolveSkillCast({
+    learnedSkills: skills,
+    playerElement: char.primaryElement ?? "kim",
+    targetElement: template.element ?? "kim",
+    spiritualRootGrade: char.spiritualRootGrade,
+    mpRemaining: char.mp,
+    round: 1,
+    nextAvailableRound: 1,
+  });
   const effectiveAtk = Math.round(char.atk * rootCombatMod);
   const baseDmg = Math.max(1, effectiveAtk - Math.floor(template.def * 0.3));
-  const playerDmg = Math.round(baseDmg * (isCrit ? 1.5 : 1) * (0.9 + Math.random() * 0.2));
+  const playerDmg = Math.round(baseDmg * skillCast.damageMultiplier * (isCrit ? 1.5 : 1) * (0.9 + Math.random() * 0.2));
   const bossDmg = Math.max(1, Math.round(template.atk * (0.8 + Math.random() * 0.4) - char.def * 0.5));
 
   const newHp = Math.max(0, spawn.hpCurrent - playerDmg);
@@ -84,10 +107,14 @@ router.post("/boss/:bossId/attack", requireAuth, async (req, res) => {
     isCrit ? `Trọng kích! Gây ${playerDmg} sát thương!` : `Gây ${playerDmg} sát thương.`,
   ];
 
+  if (skillCast.log) logs.splice(rootBonusPct > 0 ? 2 : 1, 0, skillCast.log);
+
   if (!bossKilled) {
     logs.push(`${template.name} phản công gây ${bossDmg} sát thương!`);
     await db.update(charactersTable).set({
-      hp: Math.max(1, char.hp - bossDmg), updatedAt: new Date(),
+      hp: Math.max(1, char.hp - bossDmg),
+      mp: Math.max(0, char.mp - skillCast.mpCost),
+      updatedAt: new Date(),
     }).where(eq(charactersTable.id, char.id));
   }
 
@@ -97,6 +124,7 @@ router.post("/boss/:bossId/attack", requireAuth, async (req, res) => {
   await db.update(charactersTable).set({
     exp: char.exp + expGained,
     linhThach: char.linhThach + linhThachGained,
+    mp: Math.max(0, char.mp - skillCast.mpCost),
     bossKills: bossKilled ? char.bossKills + 1 : char.bossKills,
     updatedAt: new Date(),
   }).where(eq(charactersTable.id, char.id));
@@ -136,6 +164,8 @@ router.post("/boss/:bossId/attack", requireAuth, async (req, res) => {
 
   res.json({
     playerDmg, bossDmg: bossKilled ? 0 : bossDmg, bossKilled, drops,
+    skillUsed: skillCast.skill ? { id: skillCast.skill.id, name: skillCast.skill.name, mpCost: skillCast.mpCost } : null,
+    mpRemaining: Math.max(0, char.mp - skillCast.mpCost),
     expGained, linhThachGained, newlyEarned, completedMissions,
     message: bossKilled ? `Đã hạ ${template.name}! Nhận ${expGained} EXP và ${linhThachGained} Linh Thạch.`
       : `Tấn công ${template.name} gây ${playerDmg} sát thương.`,

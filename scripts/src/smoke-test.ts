@@ -5,6 +5,7 @@
  */
 
 import { REALMS, getRealmByKey, getNextRealm, getRealmName, computePower } from "../../artifacts/api-server/src/lib/realms.js";
+import { resolveSkillCast } from "../../artifacts/api-server/src/lib/skillCombat.js";
 
 let passed = 0;
 let failed = 0;
@@ -176,6 +177,52 @@ const GENERATION: Record<string, string> = { kim: "thuy", thuy: "moc", moc: "hoa
 assert("Kim sinh Thủy", GENERATION.kim === "thuy");
 assert("Mộc sinh Hỏa", GENERATION.moc === "hoa");
 assert("Thổ sinh Kim", GENERATION.tho === "kim");
+
+// ── 11. Learned skill combat application ───────────────────────────────────
+console.log("\n[11] Learned Skill Combat");
+const fireSkill = {
+  id: "hoa_cau",
+  name: "Hỏa Cầu",
+  element: "hoa",
+  type: "attack",
+  mpCost: 20,
+  cooldownSeconds: 10,
+  damageMultiplier: 1.4,
+};
+const cast = resolveSkillCast({
+  learnedSkills: [fireSkill],
+  playerElement: "hoa",
+  targetElement: "kim",
+  spiritualRootGrade: "epic",
+  mpRemaining: 50,
+  round: 1,
+  nextAvailableRound: 1,
+});
+assert("Đủ MP thì skill được dùng", cast.skill?.id === "hoa_cau");
+assert("Skill trừ đúng MP cost", cast.mpCost === 20);
+assert("Skill damage multiplier có cap vừa phải", cast.damageMultiplier > 1 && cast.damageMultiplier <= 1.65);
+
+const noMpCast = resolveSkillCast({
+  learnedSkills: [fireSkill],
+  playerElement: "hoa",
+  targetElement: "kim",
+  spiritualRootGrade: "epic",
+  mpRemaining: 5,
+  round: 1,
+  nextAvailableRound: 1,
+});
+assert("Không đủ MP thì không cast skill", noMpCast.skill === null && noMpCast.damageMultiplier === 1);
+
+const cooldownCast = resolveSkillCast({
+  learnedSkills: [fireSkill],
+  playerElement: "hoa",
+  targetElement: "kim",
+  spiritualRootGrade: "epic",
+  mpRemaining: 50,
+  round: 1,
+  nextAvailableRound: 3,
+});
+assert("Đang cooldown thì không cast skill", cooldownCast.skill === null);
 
 // ── Summary ───────────────────────────────────────────────────────────────────
 console.log(`\n${"─".repeat(50)}`);

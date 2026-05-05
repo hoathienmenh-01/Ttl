@@ -27,6 +27,12 @@ export const ROOT_SKILL_AFFINITY: Record<string, number> = {
   epic:   0.10,
 };
 
+// ── Combat skill guard rails ────────────────────────────────────────────────
+// Learned skills should matter, but early-game skills must not create one-shot
+// damage spikes. Cooldowns are converted to combat rounds by the helper.
+export const SKILL_DAMAGE_MULTIPLIER_CAP = 1.65;
+export const SKILL_COOLDOWN_ROUND_SECONDS = 5;
+
 // ── Cultivation tick ────────────────────────────────────────────────────────
 export const CULTIVATION_TICK_SECONDS = 5;  // seconds between EXP ticks
 

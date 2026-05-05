@@ -7,6 +7,54 @@ Phiên AI: Build session 8 — Linh Căn + Ngũ Hành gameplay polish
 
 ---
 
+## Session 2026-05-06 — Skill Combat MVP + Build Baseline
+
+### Files Read / Audited
+- Root/config: `README.md`, `HANDOFF.md`, `replit.md`, `AGENTS.md`, `.replit`, `package.json`, `pnpm-workspace.yaml`, `tsconfig.json`, `tsconfig.base.json`
+- Docs/markdown: `docs/AI_CONTEXT_MIN.md`, `docs/TECH_STACK_VA_DATA_MODEL.md`, `docs/KICH_BAN_BUILD_VA_PROMPT_AI.md`, attached markdown copies in `attached_assets/`
+- Workspace/package configs: `artifacts/api-server/package.json`, `artifacts/tu-tien-lo/package.json`, `lib/db/package.json`, `scripts/package.json`
+- Gameplay code: `artifacts/api-server/src/routes/dungeon.ts`, `boss.ts`, `skill.ts`, `cultivation.ts`, `artifacts/api-server/src/lib/balance.ts`, `missionProgress.ts`, `realms.ts`, `scripts/src/smoke-test.ts`
+- DB schema: `lib/db/src/schema/characters.ts`, `skills.ts`, `bosses.ts`, `missions.ts`, `npcs.ts`
+
+### Changes Made
+- Added `artifacts/api-server/src/lib/skillCombat.ts`
+  - Central server-side helper for learned skill combat use.
+  - Chooses learned attack skills only when enough MP and cooldown is ready.
+  - Applies elemental/root affinity, caps skill damage multiplier at `1.65`, returns MP cost/cooldown/log text.
+- Updated `artifacts/api-server/src/lib/balance.ts`
+  - Added `SKILL_DAMAGE_MULTIPLIER_CAP` and `SKILL_COOLDOWN_ROUND_SECONDS`.
+- Updated `artifacts/api-server/src/routes/dungeon.ts`
+  - Replaced old flat skill ATK bonus with real skill casts during combat rounds.
+  - Dungeon combat now consumes MP, respects cooldown rounds, logs skill casts, and persists remaining MP server-side.
+- Updated `artifacts/api-server/src/routes/boss.ts`
+  - Boss attack now loads learned skills server-side, applies one eligible skill cast, consumes MP, returns `skillUsed` and `mpRemaining`, and includes skill cast in combat logs.
+- Updated `scripts/src/smoke-test.ts`
+  - Added learned-skill combat checks: enough MP casts, MP cost, damage cap, no-cast on low MP, no-cast on cooldown.
+- Updated `scripts/tsconfig.json`
+  - Set `rootDir` to repo root so the existing smoke test import from `artifacts/api-server` typechecks.
+- Updated Vite configs in `artifacts/tu-tien-lo/vite.config.ts` and `artifacts/mockup-sandbox/vite.config.ts`
+  - `PORT` and `BASE_PATH` now default locally for production build, while still accepting Replit env values.
+
+### Commands Run
+- `git fetch origin main` — pass, `FETCH_HEAD` matched local `HEAD`.
+- `git switch -c feature/skill-combat-mvp` — branch created.
+- `pnpm install` — initially failed on Windows because root `preinstall` uses `sh`.
+- `pnpm install --ignore-scripts` — pass, dependencies available.
+- `pnpm typecheck` — pass.
+- `pnpm --filter @workspace/scripts exec tsx src/smoke-test.ts` — pass, 47/47.
+- `pnpm build` — pass after Vite config baseline fix. Remaining warning: frontend chunk `529.01 kB` exceeds Vite warning threshold.
+
+### Risks / Notes
+- Skill cooldown is MVP round-based inside one combat request; no persistent per-skill cooldown table yet.
+- Boss attack is one combat action, so only one skill can fire per request.
+- Skill selection is automatic server-side; no frontend-selected active skill/equip slot yet.
+- `pnpm install` without `--ignore-scripts` still fails on Windows unless `sh` is available; Replit/Linux should be fine.
+
+### Next Recommended Task
+- Add active/equipped skill slots and expose current skill usage summary in Dungeon/Boss UI panels, still keeping all damage/MP/cooldown resolution server-side.
+
+---
+
 ## Completed Features
 
 ### Infrastructure
