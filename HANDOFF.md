@@ -1,9 +1,49 @@
 # HANDOFF — Tu Tiên Lộ: Hoa Thiên Khai Đạo
 
-## Current Status: CORE GAMEPLAY + QUEST/NPC/ACHIEVEMENT MVP POLISH + KIM ĐAN/NGUYÊN ANH CONTENT + MULTI-FLOOR DUNGEON + PET LEVELING + HIGH-TIER ALCHEMY ✅
+## Current Status: CORE GAMEPLAY + QUEST/NPC/ACHIEVEMENT MVP POLISH + KIM ĐAN/NGUYÊN ANH CONTENT + MULTI-FLOOR DUNGEON + PET LEVELING + HIGH-TIER ALCHEMY + ACTIVE SKILL PREP PANELS ✅
 
 Ngày cập nhật: 2026-05-07
-Phiên AI: Pet unlock sources + capped leveling MVP
+Phiên AI: Phase 11 — Active Skill Preparation Panels
+
+---
+
+## Session 2026-05-07 — Phase 11: Active Skill Preparation Panel
+
+### Files Read / Audited
+- `artifacts/tu-tien-lo/src/pages/dungeon.tsx`
+- `artifacts/tu-tien-lo/src/pages/boss.tsx`
+- `artifacts/tu-tien-lo/src/pages/skill.tsx`
+- `artifacts/api-server/src/routes/skill.ts`
+- `lib/db/src/schema/skills.ts`
+
+### Changes Made
+- Created new component `artifacts/tu-tien-lo/src/components/ActiveSkillPanel.tsx`:
+  - Displays 3 active skill slots with name, element, MP cost, cooldown, damage multiplier
+  - Shows warning if no active skill is equipped with a link to Pháp Thuật page
+  - Includes disclaimer that all combat is server-authoritative
+- Integrated ActiveSkillPanel into Dungeon page:
+  - Added `useMineSkills()` hook to fetch player's learned skills
+  - Panel displays before monster info and "Vào Bí Cảnh" button on each dungeon card
+- Integrated ActiveSkillPanel into Boss page:
+  - Added `useMineSkills()` hook to fetch player's learned skills
+  - Panel displays after rewards preview and before "TẤN CÔNG" button on each boss card
+- Frontend displays skill prep UI but does NOT calculate combat results
+- Server continues to handle all skill selection, MP costs, cooldowns, and damage calculations
+
+### Commands Run
+- `git status` — pass, clean before changes.
+- `git pull origin main` — pass, already up to date.
+- `pnpm typecheck` — pass.
+- `pnpm --filter @workspace/scripts exec tsx src/smoke-test.ts` — pass, 96/96.
+- `pnpm build` — pass.
+
+### Risks / Notes
+- ActiveSkillPanel is purely informational UI; does not affect server-side combat logic
+- No changes to skill combat logic, damage calculations, or MP costs
+- Server continues to be authoritative for all skill usage in dungeon and boss encounters
+
+### Next Recommended Task
+- Phase 12: Add dungeon modifiers (poison, fire, freeze, armor, regen, MP drain) and boss mechanics
 
 ---
 

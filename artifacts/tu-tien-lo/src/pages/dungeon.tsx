@@ -5,6 +5,7 @@ import { apiUrl, apiPost, getToken } from "@/lib/api";
 import { useCharacter, useRest } from "@/lib/hooks";
 import { PageSpinner, EmptyState, Card, CardLabel, ProgressBar, Btn } from "@/components/ui";
 import { ELEMENT_NAMES, ELEMENT_COLORS } from "@/lib/constants";
+import { ActiveSkillPanel } from "@/components/ActiveSkillPanel";
 
 const REST_COOLDOWN_SECONDS = 120;
 function useRestCooldown(lastRestAt: string | null | undefined): number {
@@ -35,6 +36,9 @@ async function get(path: string) {
 
 function useDungeons() {
   return useQuery({ queryKey: ["dungeons"], queryFn: () => get("/dungeon") });
+}
+function useMineSkills() {
+  return useQuery({ queryKey: ["skill-mine"], queryFn: () => get("/skill/mine") });
 }
 function useEnterDungeon() {
   const qc = useQueryClient();
@@ -69,6 +73,7 @@ type CombatResult = {
 export default function DungeonPage() {
   const { data: dungeons, isLoading } = useDungeons();
   const { data: char } = useCharacter({ refetchInterval: 8000 });
+  const { data: skills, isLoading: skillsLoading } = useMineSkills();
   const enter = useEnterDungeon();
   const rest  = useRest();
   const restCooldown = useRestCooldown(char?.lastRestAt);
@@ -201,6 +206,8 @@ export default function DungeonPage() {
                 </div>
 
                 <p className="text-xs text-amber-800 mb-4 leading-relaxed">{d.description}</p>
+
+                <ActiveSkillPanel skills={skills as any} isLoading={skillsLoading} />
 
                 {/* Monster info */}
                 <div className="flex items-center justify-between">

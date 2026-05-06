@@ -3,6 +3,9 @@ import { toast } from "sonner";
 import { useBosses, useAttackBoss } from "@/lib/hooks";
 import { ELEMENT_NAMES, ELEMENT_COLORS } from "@/lib/constants";
 import { PageSpinner, EmptyState, Card, CardLabel, ProgressBar, TabBar } from "@/components/ui";
+import { ActiveSkillPanel } from "@/components/ActiveSkillPanel";
+import { useQuery } from "@tanstack/react-query";
+import { apiUrl, getToken } from "@/lib/api";
 
 const ZONE_LABELS: Record<string, string> = {
   thanh_khe:       "Thanh Khê Cốc",
@@ -11,6 +14,17 @@ const ZONE_LABELS: Record<string, string> = {
   loi_nguyen_dinh: "Lôi Nguyên Đỉnh",
   tuyet_bang_dinh: "Tuyết Băng Đỉnh",
 };
+
+async function get(path: string) {
+  const token = getToken();
+  const res = await fetch(apiUrl(path), { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!res.ok) throw new Error("Lỗi");
+  return res.json();
+}
+
+function useMineSkills() {
+  return useQuery({ queryKey: ["skill-mine"], queryFn: () => get("/skill/mine") });
+}
 
 interface CombatLog {
   logs: string[]; expGained: number; linhThachGained: number;
@@ -25,6 +39,7 @@ interface CombatLog {
 
 export default function BossPage() {
   const { data: bosses, isLoading, refetch } = useBosses();
+  const { data: skills, isLoading: skillsLoading } = useMineSkills();
   const attack = useAttackBoss();
   const [combatLog, setCombatLog]   = useState<CombatLog | null>(null);
   const [attackingId, setAttackingId] = useState<string | null>(null);
@@ -141,6 +156,8 @@ export default function BossPage() {
                   <span>+{boss.linhThachReward?.toLocaleString?.() ?? "?"} LS</span>
                   {boss.minRealm && <span>Yêu cầu: {boss.minRealm}</span>}
                 </div>
+
+                <ActiveSkillPanel skills={skills as any} isLoading={skillsLoading} />
 
                 <button
                   onClick={() => handleAttack(boss.id)}
