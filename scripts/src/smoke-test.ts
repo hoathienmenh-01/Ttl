@@ -13,6 +13,12 @@ import {
   isSameDailyResetWindow,
 } from "../../artifacts/api-server/src/lib/dailyReset.js";
 import {
+  applyNpcTalkAffinity,
+  getNpcAffinityRank,
+  NPC_AFFINITY_MAX,
+  NPC_AFFINITY_TALK_GAIN,
+} from "../../artifacts/api-server/src/lib/npcAffinity.js";
+import {
   getDailyGrindAwareProgress,
   getDailyGrindAwareStatus,
   isStaleDailyGrindClaim,
@@ -271,6 +277,14 @@ assert("03:59 vẫn thuộc reset window hôm trước", isSameDailyResetWindow(
 assert("04:01 đã sang reset window mới", !isSameDailyResetWindow(afterFour, previousEvening));
 assert("Reset start của 03:59 là ngày hôm trước 04:00", getDailyResetStart(beforeFour).getHours() === 4 && getDailyResetStart(beforeFour).getDate() === 5);
 assert("Next reset sau 04:01 là ngày hôm sau 04:00", getNextDailyResetAt(afterFour).getHours() === 4 && getNextDailyResetAt(afterFour).getDate() === 7);
+
+// ── 14. NPC affinity guard rails ──────────────────────────────────────────
+console.log("\n[14] NPC Affinity Guard Rails");
+assert("Trò chuyện tăng đúng affinity", applyNpcTalkAffinity(10) === 10 + NPC_AFFINITY_TALK_GAIN);
+assert("Affinity không vượt cap", applyNpcTalkAffinity(99) === NPC_AFFINITY_MAX);
+assert("Affinity âm được đưa về gain hợp lệ", applyNpcTalkAffinity(-10) === NPC_AFFINITY_TALK_GAIN);
+assert("Affinity 20 là quen biết", getNpcAffinityRank(20) === "quen_biet");
+assert("Affinity 80 là tri kỷ", getNpcAffinityRank(80) === "tri_ky");
 
 // ── Summary ───────────────────────────────────────────────────────────────────
 console.log(`\n${"─".repeat(50)}`);

@@ -8,6 +8,7 @@ export * from "./sects";
 export * from "./market";
 export * from "./topup";
 export * from "./npcs";
+export * from "./npc_affinity";
 export * from "./skills";
 export * from "./achievements";
 export * from "./alchemy";

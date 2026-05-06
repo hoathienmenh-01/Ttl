@@ -723,3 +723,55 @@ cd artifacts/api-server && npx tsx src/seed.ts
 ### Next Recommended Tasks
 - Consider making achievement check explicit or moving newly-earned events to action responses only.
 - Start NPC affinity MVP when a migration is acceptable.
+
+---
+
+## Session Update - 2026-05-06 22:07:59 +07:00
+
+### Task Done
+- Implemented NPC affinity MVP.
+
+### Files Read
+- `HANDOFF.md`
+- `lib/db/src/schema/npcs.ts`
+- `artifacts/api-server/src/routes/npc.ts`
+- `artifacts/api-server/src/seed.ts`
+- `artifacts/tu-tien-lo/src/pages/npc.tsx`
+- `scripts/src/smoke-test.ts`
+
+### Files Changed
+- `lib/db/src/schema/npc_affinity.ts`
+- `lib/db/src/schema/index.ts`
+- `artifacts/api-server/src/lib/npcAffinity.ts`
+- `artifacts/api-server/src/routes/npc.ts`
+- `artifacts/tu-tien-lo/src/pages/npc.tsx`
+- `scripts/src/smoke-test.ts`
+- `HANDOFF.md`
+
+### Logic New / Fixed
+- Added `character_npc_affinity` schema table with unique `(char_id, npc_id)` index.
+- Added server helper constants: talk gain `+2`, affinity cap `100`, rank thresholds.
+- Added authenticated APIs:
+  - `GET /npc/:npcId/affinity`
+  - `POST /npc/:npcId/talk`
+- NPC page now shows affinity and a server-backed `Trò chuyện` action.
+- Smoke tests cover affinity gain, cap, negative input guard, and rank thresholds.
+
+### Commands Run
+- `pnpm typecheck`
+- `pnpm --filter @workspace/scripts exec tsx src/smoke-test.ts`
+
+### Test / Build Result
+- PASS: `pnpm typecheck`
+- PASS: smoke test, `63 passed / 0 failed / 63 total`
+- PASS: `pnpm build` after the change.
+
+### Known Risks
+- Requires applying Drizzle schema push before the new NPC affinity APIs can run against an existing DB.
+- No talk cooldown yet; affinity gain is capped but players can click repeatedly until cap.
+- Affinity currently unlocks no new dialogue/quests; it is foundation state plus UI.
+
+### Next Recommended Tasks
+- Add talk cooldown or daily talk limit.
+- Unlock extra NPC dialogue at affinity thresholds 20/50/80.
+- Add quest gating or flavor text based on affinity rank.

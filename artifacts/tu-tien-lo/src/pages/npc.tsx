@@ -29,6 +29,16 @@ function useNpcs() {
 function useNpcQuests(npcId: string) {
   return useQuery({ queryKey: ["npc-quests", npcId], queryFn: () => get(`/npc/${npcId}/quests`), enabled: !!npcId });
 }
+function useNpcAffinity(npcId: string) {
+  return useQuery({ queryKey: ["npc-affinity", npcId], queryFn: () => get(`/npc/${npcId}/affinity`), enabled: !!npcId });
+}
+function useTalkNpc() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (npcId: string) => apiPost(`/npc/${npcId}/talk`),
+    onSuccess: (_data, npcId) => qc.invalidateQueries({ queryKey: ["npc-affinity", npcId] }),
+  });
+}
 function useAcceptMission() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: (id: string) => apiPost(`/mission/${id}/accept`), onSuccess: () => qc.invalidateQueries({ queryKey: ["missions"] }) });
@@ -45,6 +55,8 @@ export default function NpcPage() {
   const { data: npcs, isLoading } = useNpcs();
   const [selectedNpc, setSelectedNpc] = useState<any>(null);
   const { data: quests, isLoading: questsLoading } = useNpcQuests(selectedNpc?.id ?? "");
+  const { data: affinity } = useNpcAffinity(selectedNpc?.id ?? "");
+  const talk = useTalkNpc();
   const accept = useAcceptMission();
   const complete = useCompleteMission();
 
@@ -55,6 +67,14 @@ export default function NpcPage() {
   async function handleComplete(id: string, name: string) {
     try { const r = await complete.mutateAsync(id); toast.success(r.message || `Hoàn thành: ${name}`); }
     catch (e: any) { toast.error(e.message || "Thất bại"); }
+  }
+  async function handleTalk(npcId: string) {
+    try {
+      const r = await talk.mutateAsync(npcId) as any;
+      toast.success(`${r.message} Thân thiện +${r.affinityGained}.`);
+    } catch (e: any) {
+      toast.error(e.message || "Không thể trò chuyện");
+    }
   }
 
   if (isLoading) return <div className="p-8 text-amber-800 text-center animate-pulse">Đang triệu hồi NPC...</div>;
@@ -108,6 +128,18 @@ export default function NpcPage() {
               <h2 className="text-amber-300 font-bold text-base mb-0.5">{selectedNpc.name}</h2>
               <div className="text-amber-700 text-sm mb-2">{selectedNpc.title}</div>
               <p className="text-amber-800 text-xs">{selectedNpc.description}</p>
+              <div className="mt-3 flex items-center gap-3">
+                <div className="text-xs text-amber-800">
+                  Thân thiện: <span className="text-amber-400 tabular-nums">{affinity?.affinity ?? 0}/100</span>
+                </div>
+                <button
+                  onClick={() => handleTalk(selectedNpc.id)}
+                  disabled={talk.isPending}
+                  className="px-3 py-1.5 text-xs border border-amber-800/40 text-amber-600 hover:text-amber-400 rounded-sm transition-all disabled:opacity-50"
+                >
+                  Trò chuyện
+                </button>
+              </div>
             </div>
           </div>
 
