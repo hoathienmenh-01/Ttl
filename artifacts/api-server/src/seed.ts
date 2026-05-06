@@ -55,6 +55,11 @@ async function seed() {
     { id: "huyen_ngoc_boi",  name: "Huyền Ngọc Bội Thần",  quality: "huyen", type: "accessory", baseStats: { spirit: 120, atk: 50, speed: 20 }, sellPrice: 5000, description: "Ngọc bội pháp bảo cấp Huyền, tổng hợp nhiều thuộc tính.", stackable: false },
     // Healing pill
     { id: "da_hoi_dan",      name: "Đại Hồi Đan",          quality: "linh",  type: "pill",      baseStats: { hp: 800, mp: 300 }, sellPrice: 600,  description: "Đan dược mạnh, hồi phục lượng lớn HP và MP.",              stackable: true  },
+    // Kim Đan / Nguyên Anh expansion items
+    { id: "kim_dan_tam_an",  name: "Kim Đan Tâm Ấn",       quality: "huyen", type: "pill",      baseStats: { exp: 1500, spirit: 20 }, sellPrice: 900, description: "Ấn đan ổn định Kim Đan, giúp tu sĩ củng cố đạo tâm sau khi phá cảnh.", stackable: true },
+    { id: "am_linh_phu",     name: "Âm Linh Trấn Phù",     quality: "huyen", type: "misc",      baseStats: { def: 40, mp: 120 }, sellPrice: 800, description: "Linh phù trấn áp âm khí, thường dùng khi đối đầu Tịch Thiên Điện.", stackable: true },
+    { id: "nguyen_anh_tam_hoa", name: "Nguyên Anh Tâm Hỏa", quality: "huyen", type: "pill",     baseStats: { exp: 3000, mp: 400 }, sellPrice: 1600, description: "Tâm hỏa luyện thần cho Nguyên Anh tu sĩ, tăng linh lực nhưng không thay thế tu luyện.", stackable: true },
+    { id: "loi_long_lan",    name: "Lôi Long Lân",         quality: "huyen", type: "accessory", baseStats: { atk: 70, spirit: 90, speed: 25 }, sellPrice: 4200, description: "Vảy lôi long cổ thần, còn lưu lại điện quang thượng cổ.", stackable: false },
   ]).onConflictDoNothing();
 
   // ── Skill Templates ─────────────────────────────────────────────────────────
@@ -83,9 +88,11 @@ async function seed() {
     { id: "wolf_king",     name: "Sói Ma Vương",          description: "Sói hung tàn nơi Thanh Khê Cốc, mắt đỏ như máu — mối đe dọa đầu tiên của ngoại môn đệ tử.",   element: "moc",  hpMax: 5000,   power: 100,   atk: 80,   def: 20,  minRealm: "phamnhan", zone: "thanh_khe",      isWorldBoss: false, expDrop: 200,   linhThachDrop: 100,   dropItems: ["hoi_khi_dan", "linh_chi"],       spawnIntervalMinutes: 30  },
     { id: "stone_golem",   name: "Thổ Quái Thạch Khổng Lồ", description: "Thạch nhân khổng lồ thủ hộ mỏ quặng cổ đại.",                                               element: "tho",  hpMax: 15000,  power: 300,   atk: 150,  def: 80,  minRealm: "luyenkhi", zone: "co_quang_mo",    isWorldBoss: false, expDrop: 600,   linhThachDrop: 300,   dropItems: ["thiet_tinh"],                    spawnIntervalMinutes: 60  },
     { id: "fire_serpent",  name: "Hỏa Mãng Xà Thần",     description: "Mãng xà linh thú nắm giữ Hỏa Nguyên Châu, thân mình phun lửa ngàn độ.",                       element: "hoa",  hpMax: 40000,  power: 800,   atk: 400,  def: 150, minRealm: "trucco",   zone: "hoa_nguyen_quan", isWorldBoss: false, expDrop: 2000,  linhThachDrop: 1000,  dropItems: ["hoa_tinh_thach", "khai_tam_dan"], spawnIntervalMinutes: 120 },
-    { id: "tich_thien",    name: "Tịch Thiên Hộ Pháp",   description: "Cường giả Tịch Thiên Điện, kẻ thực thi lệnh khóa đường tu tiên của chúng sinh.",               element: "am",   hpMax: 120000, power: 3000,  atk: 1200, def: 500, minRealm: "kimdan",   zone: "am_linh_den",    isWorldBoss: false, expDrop: 12000, linhThachDrop: 6000,  dropItems: ["hoa_thien_ling"],                spawnIntervalMinutes: 360 },
-    { id: "loi_long",      name: "Lôi Long Cổ Thần",     description: "Long thần Lôi Nguyên cổ đại từ Thượng Cổ, sấm sét hào quang bao phủ.",                        element: "loi",  hpMax: 500000, power: 15000, atk: 5000, def: 2000, minRealm: "nguyenanh", zone: "loi_nguyen_dinh", isWorldBoss: true, expDrop: 80000, linhThachDrop: 40000, dropItems: ["hoa_thien_ling", "ngoc_than"],   spawnIntervalMinutes: 720 },
+    { id: "tich_thien",    name: "Tịch Thiên Hộ Pháp",   description: "Cường giả Tịch Thiên Điện, kẻ thực thi lệnh khóa đường tu tiên của chúng sinh.",               element: "am",   hpMax: 120000, power: 3000,  atk: 1200, def: 500, minRealm: "kimdan",   zone: "am_linh_den",    isWorldBoss: false, expDrop: 12000, linhThachDrop: 6000,  dropItems: ["hoa_thien_ling", "am_linh_phu"],                spawnIntervalMinutes: 360 },
+    { id: "loi_long",      name: "Lôi Long Cổ Thần",     description: "Long thần Lôi Nguyên cổ đại từ Thượng Cổ, sấm sét hào quang bao phủ.",                        element: "loi",  hpMax: 500000, power: 15000, atk: 5000, def: 2000, minRealm: "nguyenanh", zone: "loi_nguyen_dinh", isWorldBoss: true, expDrop: 80000, linhThachDrop: 40000, dropItems: ["hoa_thien_ling", "ngoc_than", "loi_long_lan"],   spawnIntervalMinutes: 720 },
   ]).onConflictDoNothing();
+  await db.update(bossTemplatesTable).set({ dropItems: ["hoa_thien_ling", "am_linh_phu"] }).where(eq(bossTemplatesTable.id, "tich_thien"));
+  await db.update(bossTemplatesTable).set({ dropItems: ["hoa_thien_ling", "ngoc_than", "loi_long_lan"] }).where(eq(bossTemplatesTable.id, "loi_long"));
 
   // ── Mission Templates ───────────────────────────────────────────────────────
   await db.insert(missionTemplatesTable).values([
@@ -104,9 +111,13 @@ async function seed() {
     { id: "kimdan_main_01",   code: "M009", name: "Kim Đan Khai Lô",           description: "Lăng Vân Sinh nói: Kim Đan là cảnh giới mà chỉ một trong vạn tu sĩ đạt được. Đây là sự chuyển hóa thực sự từ thể xác sang linh hồn. Hãy đột phá!", type: "realm", npcName: "Lăng Vân Sinh", realmRequired: "trucco",  progressMax: 1, objectiveType: "breakthrough", rewardExp: 8000, rewardLinhThach: 8000, rewardItems: ["hoa_thien_ling", "ngoc_than"], order: 9 },
     { id: "kimdan_main_02",   code: "M010", name: "Vào Âm Linh Điện",          description: "Tô Nguyệt Ly phát hiện bản đồ dẫn đến Âm Linh Điện — nơi Tịch Thiên Điện phong ấn linh mạch thượng cổ. Hãy khám phá bí cảnh này.",         type: "main",  npcName: "Tô Nguyệt Ly",     realmRequired: "trucco",   progressMax: 1, objectiveType: "dungeon_clear", rewardExp: 5000, rewardLinhThach: 3000, rewardItems: ["khai_tam_dan", "ngoc_than"], order: 10 },
     { id: "kimdan_main_03",   code: "M011", name: "Chinh Phục Hỏa Mãng Xà",   description: "Hàn Dạ thách ngươi tiêu diệt Hỏa Mãng Xà Thần trước khi hắn làm. Kẻ thắng sẽ được Lăng Vân Sinh truyền thụ bí kíp thất truyền.",           type: "npc",   npcName: "Hàn Dạ",           realmRequired: "trucco",   progressMax: 1, objectiveType: "boss_kill",   rewardExp: 6000, rewardLinhThach: 4000, rewardItems: ["kiem_linh", "hoa_tinh_thach"], order: 11 },
+    { id: "kimdan_main_04",   code: "M014", name: "Ổn Định Kim Đan",          description: "Kim Đan vừa thành còn dao động. Lăng Vân Sinh yêu cầu ngươi vào Lôi Nguyên Đỉnh hấp thu lôi ý để luyện đan tâm, tránh đạo cơ rạn nứt.", type: "main", npcName: "Lăng Vân Sinh", realmRequired: "kimdan", progressMax: 1, objectiveType: "dungeon_clear", rewardExp: 9000, rewardLinhThach: 5000, rewardItems: ["kim_dan_tam_an"], order: 12 },
+    { id: "kimdan_main_05",   code: "M015", name: "Trấn Âm Hộ Mạch",          description: "Tịch Thiên Hộ Pháp đang dùng âm khí ăn mòn linh mạch Hoa Thiên Môn. Tô Nguyệt Ly giao ngươi mang trấn phù vào Âm Linh Điện để cắt nguồn phong ấn.", type: "main", npcName: "Tô Nguyệt Ly", realmRequired: "kimdan", progressMax: 1, objectiveType: "boss_kill", rewardExp: 11000, rewardLinhThach: 7000, rewardItems: ["am_linh_phu"], order: 13 },
     // Main quests — Nguyên Anh
     { id: "nguyenanh_main_01",code: "M012", name: "Nguyên Anh Xuất Thế",       description: "Nguyên Anh thoát xác — bước tiến vượt ngoài nhân loại. Lăng Vân Sinh cảnh báo: con đường từ đây sẽ cô độc hơn bao giờ hết. Hãy đột phá!", type: "realm", npcName: "Lăng Vân Sinh",     realmRequired: "kimdan",   progressMax: 1, objectiveType: "breakthrough", rewardExp: 20000, rewardLinhThach: 20000, rewardItems: ["hoa_thien_ling"], order: 12 },
     { id: "nguyenanh_main_02",code: "M013", name: "Đối Đầu Tịch Thiên",       description: "Tô Nguyệt Ly giải mã được cổ thư: Lôi Long Cổ Thần là chìa khóa phá vỡ phong ấn của Tịch Thiên Điện. Hãy đối mặt với kẻ thù thực sự.", type: "main",  npcName: "Tô Nguyệt Ly",     realmRequired: "kimdan",   progressMax: 1, objectiveType: "boss_kill",   rewardExp: 15000, rewardLinhThach: 10000, rewardItems: ["hoa_thien_ling"], order: 13 },
+    { id: "nguyenanh_main_03",code: "M016", name: "Tọa Quan Dưỡng Anh",        description: "Nguyên Anh mới sinh cần được dưỡng bằng tâm hỏa và linh tức. Mộc Thanh Y chuẩn bị dược dẫn, còn ngươi phải nhập định để ổn định thần hồn.", type: "main", npcName: "Mộc Thanh Y", realmRequired: "nguyenanh", progressMax: 1, objectiveType: "cultivate", rewardExp: 22000, rewardLinhThach: 12000, rewardItems: ["nguyen_anh_tam_hoa"], order: 14 },
+    { id: "nguyenanh_main_04",code: "M017", name: "Lôi Long Chứng Đạo",        description: "Lôi Long Cổ Thần giữ mảnh ký ức cuối cùng của Hoa Thiên Khai Đạo. Hãy cùng tông môn nghênh chiến để mở đường phá vỡ phong ấn thượng cổ.", type: "main", npcName: "Lăng Vân Sinh", realmRequired: "nguyenanh", progressMax: 1, objectiveType: "boss_kill", rewardExp: 28000, rewardLinhThach: 16000, rewardItems: ["loi_long_lan"], order: 15 },
     // Sect quests — Phàm Nhân
     { id: "phamnhan_sect_01", code: "S001", name: "Gia Nhập Hoa Thiên Môn",   description: "Chấp Sự Hoa Thiên yêu cầu ngươi chính thức gia nhập tông môn. Đây là bước đầu tiên trở thành đệ tử thực sự.",                           type: "sect",  npcName: "Chấp Sự Hoa Thiên", realmRequired: null,       progressMax: 1, objectiveType: null,          rewardExp: 200,  rewardLinhThach: 300,  rewardItems: [],                order: 1 },
     { id: "phamnhan_sect_02", code: "S002", name: "Bảo Vệ Tông Môn Sơn Môn", description: "Chấp Sự Hoa Thiên giao nhiệm vụ tuần tra. Vào Thanh Khê Cốc tiêu diệt dã thú đang uy hiếp tông môn.",                                    type: "sect",  npcName: "Chấp Sự Hoa Thiên", realmRequired: null,       progressMax: 1, objectiveType: "dungeon_clear", rewardExp: 300,  rewardLinhThach: 400,  rewardItems: ["hoi_khi_dan"],   order: 2 },
@@ -129,6 +140,9 @@ async function seed() {
     { id: "npc_moc_aff_20",    code: "N006", name: "Lời Dặn Trong Vườn Dược", description: "Khi đã quen biết, Mộc Thanh Y tin ngươi đủ cẩn trọng để chăm sóc luống dược thảo non trong hậu sơn.", type: "npc", npcName: "Mộc Thanh Y", realmRequired: null, progressMax: 1, objectiveType: "cultivate", affinityRequired: 20, rewardExp: 250, rewardLinhThach: 250, rewardItems: ["linh_chi"], order: 3 },
     { id: "npc_han_aff_50",    code: "N007", name: "Kiếm Luận Sau Hoàng Hôn", description: "Khi đã thân thiết, Hàn Dạ chịu hạ giọng và rủ ngươi luận kiếm thật sự thay vì chỉ khiêu khích.", type: "npc", npcName: "Hàn Dạ", realmRequired: "luyenkhi", progressMax: 1, objectiveType: "dungeon_clear", affinityRequired: 50, rewardExp: 900, rewardLinhThach: 700, rewardItems: ["kim_quang_dan"], order: 3 },
     { id: "npc_to_aff_80",     code: "N008", name: "Bí Mật Dưới Trăng", description: "Khi đã là tri kỷ, Tô Nguyệt Ly tiết lộ đoạn ký ức bị phong ấn và nhờ ngươi xác nhận dấu vết Tịch Thiên.", type: "npc", npcName: "Tô Nguyệt Ly", realmRequired: "trucco", progressMax: 1, objectiveType: "boss_kill", affinityRequired: 80, rewardExp: 1800, rewardLinhThach: 1200, rewardItems: ["hoa_thien_ling"], order: 2 },
+    { id: "npc_to_kimdan_aff_50", code: "N009", name: "Mực Tím Âm Điện", description: "Tô Nguyệt Ly cần một ít âm mực còn sót trong Âm Linh Điện để đối chiếu cổ thư. Chỉ người nàng tin tưởng mới được giao việc này.", type: "npc", npcName: "Tô Nguyệt Ly", realmRequired: "kimdan", progressMax: 1, objectiveType: "dungeon_clear", affinityRequired: 50, rewardExp: 3500, rewardLinhThach: 1800, rewardItems: ["am_linh_phu"], order: 3 },
+    { id: "npc_han_kimdan_aff_80", code: "N010", name: "Một Kiếm Không Nợ", description: "Hàn Dạ thừa nhận ngươi là tri kỷ kiếm đạo. Hắn muốn cùng ngươi đánh một trận thật sự trước Tịch Thiên Hộ Pháp.", type: "npc", npcName: "Hàn Dạ", realmRequired: "kimdan", progressMax: 1, objectiveType: "boss_kill", affinityRequired: 80, rewardExp: 4200, rewardLinhThach: 2200, rewardItems: ["kim_dan_tam_an"], order: 4 },
+    { id: "npc_moc_nguyenanh_aff_80", code: "N011", name: "Dược Dẫn Dưỡng Anh", description: "Mộc Thanh Y tin ngươi đủ bản lĩnh giữ bí phương dưỡng Nguyên Anh. Nàng nhờ ngươi luyện thử dược dẫn không truyền ra ngoài.", type: "npc", npcName: "Mộc Thanh Y", realmRequired: "nguyenanh", progressMax: 1, objectiveType: "alchemy_craft", affinityRequired: 80, rewardExp: 5500, rewardLinhThach: 2600, rewardItems: ["nguyen_anh_tam_hoa"], order: 4 },
   ]).onConflictDoNothing();
 
   // ── NPCs ────────────────────────────────────────────────────────────────────
@@ -142,7 +156,7 @@ async function seed() {
         quest: "Hành trình tu tiên không bao giờ dễ dàng. Nhưng ta tin tưởng ngươi sẽ vượt qua.",
         farewell: "Đi đi. Đạo lộ trước mặt ngươi còn rất dài.",
       },
-      questIds: ["phamnhan_main_01", "luyenkhi_main_01", "truc_co_main_01", "kimdan_main_01", "nguyenanh_main_01"],
+      questIds: ["phamnhan_main_01", "luyenkhi_main_01", "truc_co_main_01", "kimdan_main_01", "kimdan_main_04", "nguyenanh_main_01", "nguyenanh_main_04"],
       avatarCode: "LVS",
     },
     {
@@ -157,7 +171,7 @@ async function seed() {
         quest: "Ta cần một ít Linh Thảo để bào chế thuốc chữa thương. Ngươi có thể giúp ta được không?",
         farewell: "Cẩn thận nhé, sư đệ. Mộc hệ linh khí sẽ luôn chữa lành vết thương cho ngươi.",
       },
-      questIds: ["phamnhan_main_02", "npc_moc_001", "luyenkhi_main_02", "npc_moc_002", "npc_moc_aff_20"],
+      questIds: ["phamnhan_main_02", "npc_moc_001", "luyenkhi_main_02", "npc_moc_002", "npc_moc_aff_20", "nguyenanh_main_03", "npc_moc_nguyenanh_aff_80"],
       avatarCode: "MTY",
     },
     {
@@ -172,7 +186,7 @@ async function seed() {
         quest: "Ta thách ngươi! Ai hoàn thành trước thì người đó là thiên tài thực sự của Hoa Thiên Môn!",
         farewell: "Đừng để ta phải chờ lâu. Ta sẽ không giả vờ ngươi yếu nếu ngươi thua.",
       },
-      questIds: ["phamnhan_main_03", "npc_han_da_001", "luyenkhi_main_03", "kimdan_main_03", "npc_han_da_002", "npc_han_aff_50"],
+      questIds: ["phamnhan_main_03", "npc_han_da_001", "luyenkhi_main_03", "kimdan_main_03", "npc_han_da_002", "npc_han_aff_50", "npc_han_kimdan_aff_80"],
       avatarCode: "HD",
     },
     {
@@ -187,7 +201,7 @@ async function seed() {
         quest: "Ta tìm thấy một mảnh cổ thư đề cập đến Hoa Thiên Khai Đạo. Nhưng ta cần ngươi giúp xác nhận.",
         farewell: "Đừng tiết lộ điều này với ai. Tịch Thiên Điện luôn có mắt ở khắp nơi.",
       },
-      questIds: ["phamnhan_main_04", "npc_to_nguyet_001", "kimdan_main_02", "nguyenanh_main_02", "npc_to_aff_80"],
+      questIds: ["phamnhan_main_04", "npc_to_nguyet_001", "kimdan_main_02", "kimdan_main_05", "nguyenanh_main_02", "npc_to_aff_80", "npc_to_kimdan_aff_50"],
       avatarCode: "TNL",
     },
     {
@@ -217,6 +231,9 @@ async function seed() {
   ]).onConflictDoNothing();
 
   await db.update(npcsTable).set({
+    questIds: ["phamnhan_main_01", "luyenkhi_main_01", "truc_co_main_01", "kimdan_main_01", "kimdan_main_04", "nguyenanh_main_01", "nguyenanh_main_04"],
+  }).where(eq(npcsTable.id, "lang_van_sinh"));
+  await db.update(npcsTable).set({
     dialogue: {
       greet: "Chào sư đệ! Ta sẽ giúp ngươi làm quen với tông môn. Đừng ngại hỏi ta bất cứ điều gì.",
       greet_quen_biet: "Sư đệ đến đúng lúc. Vườn dược hôm nay yên tĩnh, ta có thể chỉ ngươi vài mẹo dưỡng linh thảo.",
@@ -225,7 +242,7 @@ async function seed() {
       quest: "Ta cần một ít Linh Thảo để bào chế thuốc chữa thương. Ngươi có thể giúp ta được không?",
       farewell: "Cẩn thận nhé, sư đệ. Mộc hệ linh khí sẽ luôn chữa lành vết thương cho ngươi.",
     },
-    questIds: ["phamnhan_main_02", "npc_moc_001", "luyenkhi_main_02", "npc_moc_002", "npc_moc_aff_20"],
+    questIds: ["phamnhan_main_02", "npc_moc_001", "luyenkhi_main_02", "npc_moc_002", "npc_moc_aff_20", "nguyenanh_main_03", "npc_moc_nguyenanh_aff_80"],
   }).where(eq(npcsTable.id, "moc_thanh_y"));
   await db.update(npcsTable).set({
     dialogue: {
@@ -236,7 +253,7 @@ async function seed() {
       quest: "Ta thách ngươi! Ai hoàn thành trước thì người đó là thiên tài thực sự của Hoa Thiên Môn!",
       farewell: "Đừng để ta phải chờ lâu. Ta sẽ không giả vờ ngươi yếu nếu ngươi thua.",
     },
-    questIds: ["phamnhan_main_03", "npc_han_da_001", "luyenkhi_main_03", "kimdan_main_03", "npc_han_da_002", "npc_han_aff_50"],
+    questIds: ["phamnhan_main_03", "npc_han_da_001", "luyenkhi_main_03", "kimdan_main_03", "npc_han_da_002", "npc_han_aff_50", "npc_han_kimdan_aff_80"],
   }).where(eq(npcsTable.id, "han_da"));
   await db.update(npcsTable).set({
     dialogue: {
@@ -247,7 +264,7 @@ async function seed() {
       quest: "Ta tìm thấy một mảnh cổ thư đề cập đến Hoa Thiên Khai Đạo. Nhưng ta cần ngươi giúp xác nhận.",
       farewell: "Đừng tiết lộ điều này với ai. Tịch Thiên Điện luôn có mắt ở khắp nơi.",
     },
-    questIds: ["phamnhan_main_04", "npc_to_nguyet_001", "kimdan_main_02", "nguyenanh_main_02", "npc_to_aff_80"],
+    questIds: ["phamnhan_main_04", "npc_to_nguyet_001", "kimdan_main_02", "kimdan_main_05", "nguyenanh_main_02", "npc_to_aff_80", "npc_to_kimdan_aff_50"],
   }).where(eq(npcsTable.id, "to_nguyet_ly"));
 
   // ── Sects ───────────────────────────────────────────────────────────────────

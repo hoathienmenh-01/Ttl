@@ -326,6 +326,24 @@ assert("Yêu cầu 50 tương ứng thân thiết", getNpcAffinityRankForRequire
 assert("Dialogue ưu tiên theo rank", getNpcRankDialogue({ greet: "cũ", greet_than_thiet: "mới" }, "than_thiet") === "mới");
 assert("Dialogue fallback về greet", getNpcRankDialogue({ greet: "cũ" }, "tri_ky") === "cũ");
 
+// ── 15. Kim Đan / Nguyên Anh content expansion balance ──────────────────────
+console.log("\n[15] Kim Đan / Nguyên Anh Content Expansion");
+const expansionMainQuestRewards = [
+  { id: "kimdan_main_04", exp: 9000, linhThach: 5000 },
+  { id: "kimdan_main_05", exp: 11000, linhThach: 7000 },
+  { id: "nguyenanh_main_03", exp: 22000, linhThach: 12000 },
+  { id: "nguyenanh_main_04", exp: 28000, linhThach: 16000 },
+];
+const expansionSideQuestRewards = [
+  { id: "npc_to_kimdan_aff_50", exp: 3500, linhThach: 1800, affinityRequired: 50 },
+  { id: "npc_han_kimdan_aff_80", exp: 4200, linhThach: 2200, affinityRequired: 80 },
+  { id: "npc_moc_nguyenanh_aff_80", exp: 5500, linhThach: 2600, affinityRequired: 80 },
+];
+assert("Expansion main quest reward cao hơn side quest", Math.min(...expansionMainQuestRewards.map(q => q.exp)) > Math.max(...expansionSideQuestRewards.map(q => q.exp)));
+assert("Expansion reward không vượt ngưỡng lạm phát MVP", Math.max(...expansionMainQuestRewards.map(q => q.linhThach)) <= 16000);
+assert("Affinity side quests đều có gate 50+", expansionSideQuestRewards.every(q => q.affinityRequired >= 50));
+assert("Expansion quest IDs unique", new Set([...expansionMainQuestRewards, ...expansionSideQuestRewards].map(q => q.id)).size === 7);
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 console.log(`\n${"─".repeat(50)}`);
 console.log(`SMOKE TEST: ${passed} passed / ${failed} failed / ${passed + failed} total`);

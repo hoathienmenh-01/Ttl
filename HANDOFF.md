@@ -1,9 +1,42 @@
 # HANDOFF — Tu Tiên Lộ: Hoa Thiên Khai Đạo
 
-## Current Status: CORE GAMEPLAY + QUEST/NPC/ACHIEVEMENT MVP POLISH ✅
+## Current Status: CORE GAMEPLAY + QUEST/NPC/ACHIEVEMENT MVP POLISH + KIM ĐAN/NGUYÊN ANH CONTENT ✅
 
 Ngày cập nhật: 2026-05-07
-Phiên AI: Docs audit — active skill slots, NPC cooldown, affinity dialogue/quest gating đã hoàn thiện
+Phiên AI: Content expansion — Kim Đan/Nguyên Anh quest + item/drop seed
+
+---
+
+## Session 2026-05-07 — Kim Đan / Nguyên Anh Content Expansion
+
+### Files Read / Audited
+- `README.md`
+- `HANDOFF.md`
+- `artifacts/api-server/src/seed.ts`
+- `scripts/src/smoke-test.ts`
+
+### Changes Made
+- Expanded seed catalog without architecture changes:
+  - Added 4 mainline quests for Kim Đan and Nguyên Anh: `kimdan_main_04`, `kimdan_main_05`, `nguyenanh_main_03`, `nguyenanh_main_04`.
+  - Added 3 NPC affinity-gated side quests: `npc_to_kimdan_aff_50`, `npc_han_kimdan_aff_80`, `npc_moc_nguyenanh_aff_80`.
+  - Added 4 moderate reward/drop items: `kim_dan_tam_an`, `am_linh_phu`, `nguyen_anh_tam_hoa`, `loi_long_lan`.
+  - Updated NPC `questIds` and boss drop pools idempotently so rerun seed refreshes existing rows instead of creating duplicates.
+- Updated smoke test integrity checks for expansion quest uniqueness, affinity gates, and reward balance.
+- Updated README/HANDOFF sample data counts: 39 item templates, 27 mission templates.
+
+### Commands Run
+- `git status --short --branch` — pass, branch `main...origin/main`, expansion files modified.
+- `pnpm typecheck` — pass.
+- `pnpm --filter @workspace/scripts exec tsx src/smoke-test.ts` — pass.
+- `pnpm build` — pass.
+
+### Risks / Notes
+- Seed inserts use `onConflictDoNothing`; changed boss drop pools and NPC quest links are refreshed by explicit updates.
+- Production DB still needs the existing rollout/preflight checklist before relying on `affinity_required` and NPC affinity data.
+- New content is catalog-only; no new quest objective engine behavior was added.
+
+### Next Recommended Task
+- Add higher-tier alchemy recipes for Kim Đan/Nguyên Anh using the existing recipe/craft flow, with smoke checks for realm gating and reward balance.
 
 ---
 
@@ -103,7 +136,7 @@ Phiên AI: Docs audit — active skill slots, NPC cooldown, affinity dialogue/qu
 - [x] Boss thế giới với shared HP pool
 - [x] Bí cảnh 6 loại — server tính toàn bộ combat, ngũ hành modifier + final boss floor
 - [x] Pháp thuật 7 loại theo ngũ hành — học tốn Linh Thạch
-- [x] Quest: 20 nhiệm vụ (main/realm/sect/npc/grind), double-claim protected bằng server state/transaction guard
+- [x] Quest: 27 nhiệm vụ (main/realm/sect/npc/grind), double-claim protected bằng server state/transaction guard
 - [x] Daily grind quest reset theo mốc 04:00 server local time
 - [x] NPC: 6 NPC với dialogue và quest riêng
 - [x] NPC affinity MVP: bảng `character_npc_affinity`, API get/talk, cooldown 04:00, rank dialogue, quest gating 20/50/80
@@ -111,7 +144,7 @@ Phiên AI: Docs audit — active skill slots, NPC cooldown, affinity dialogue/qu
 - [x] Active/equipped skill slots MVP: 3 ô active, guard skill chưa học, combat ưu tiên active skill server-side
 - [x] **Inventory / Equipment MVP hoàn chỉnh** (Session 9):
   - 6 slot trang bị: weapon, armor, hat, belt, boots, accessory — tất cả có item trong catalog
-  - Catalog mở rộng: 35 items (vũ khí, giáp, mũ, đai, giày, phụ kiện, đan, thảo dược, quặng)
+  - Catalog mở rộng: 39 items (vũ khí, giáp, mũ, đai, giày, phụ kiện, đan, thảo dược, quặng)
   - Equip/unequip → stat tự động thay đổi trên character + power recompute ngay lập tức
   - Consumable use → HP/MP/EXP effect trả về effectsSummary rõ ràng
   - Anti-negative: qty không thể âm, sell clamped đến qty thực tế
@@ -345,7 +378,7 @@ pnpm build
 
 Ghi chú:
 - Chạy `push-force` chỉ sau khi kiểm tra schema diff và backup DB nếu là môi trường production.
-- Rerun seed để insert 3 NPC affinity-gated quests mới và refresh questIds/dialogue rank cho NPC liên quan.
+- Rerun seed để insert NPC affinity-gated quests, Kim Đan/Nguyên Anh mainline quests, reward/drop items, và refresh questIds/drop pools cho NPC/boss liên quan.
 
 ---
 
@@ -364,9 +397,9 @@ Ghi chú:
 - [ ] Richer affinity dialogue/reward ở các mốc thân thiết cao hơn
 
 ### P10 — Content expansion
-- [ ] Thêm quest cho Kim Đan và Nguyên Anh tier (chỉ sửa seed.ts + re-seed)
+- [x] Thêm quest cho Kim Đan và Nguyên Anh tier (chỉ sửa seed.ts + re-seed)
 - [ ] More alchemy recipes (cao cấp hơn)
-- [ ] Thêm item drops từ boss
+- [x] Thêm item drops từ boss
 
 ### P11 — Social & Economy
 - [x] Achievement notification badge/toast
@@ -396,11 +429,11 @@ Ghi chú:
 
 | Data | Số lượng | Cách reset |
 |------|----------|------------|
-| Item templates | 19 | `cd artifacts/api-server && npx tsx src/seed.ts` |
+| Item templates | 39 | `cd artifacts/api-server && npx tsx src/seed.ts` |
 | Skill templates | 7 | (cùng seed) |
 | Dungeon templates | 6 | (cùng seed) |
 | Boss templates | 5 | (cùng seed) |
-| Mission templates | 20 | (cùng seed; gồm 3 NPC affinity-gated quest) |
+| Mission templates | 27 | (cùng seed; gồm 6 NPC affinity-gated quest) |
 | NPCs | 6 | (cùng seed) |
 | Sects | 5 | (cùng seed) |
 | Battle Pass Season | 1 | "Mùa 1 — Khai Thiên" (onConflictDoNothing) |
