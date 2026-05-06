@@ -2,8 +2,8 @@
 
 ## Current Status: CORE GAMEPLAY + QUEST/NPC/ACHIEVEMENT MVP POLISH ✅
 
-Ngày cập nhật: 2026-05-06
-Phiên AI: Docs audit — skill combat, daily reset 04:00, achievement UI/toast, NPC affinity MVP đã hoàn thiện
+Ngày cập nhật: 2026-05-07
+Phiên AI: Docs audit — active skill slots, NPC cooldown, affinity dialogue/quest gating đã hoàn thiện
 
 ---
 
@@ -103,11 +103,12 @@ Phiên AI: Docs audit — skill combat, daily reset 04:00, achievement UI/toast,
 - [x] Boss thế giới với shared HP pool
 - [x] Bí cảnh 6 loại — server tính toàn bộ combat, ngũ hành modifier + final boss floor
 - [x] Pháp thuật 7 loại theo ngũ hành — học tốn Linh Thạch
-- [x] Quest: 17 nhiệm vụ (main/realm/sect/npc/grind), double-claim protected bằng server state/transaction guard
+- [x] Quest: 20 nhiệm vụ (main/realm/sect/npc/grind), double-claim protected bằng server state/transaction guard
 - [x] Daily grind quest reset theo mốc 04:00 server local time
 - [x] NPC: 6 NPC với dialogue và quest riêng
-- [x] NPC affinity MVP: bảng `character_npc_affinity`, API get/talk, rank thresholds, UI affinity + nút trò chuyện
+- [x] NPC affinity MVP: bảng `character_npc_affinity`, API get/talk, cooldown 04:00, rank dialogue, quest gating 20/50/80
 - [x] Achievement MVP: catalog/check, claim reward server-side, page UI, sidebar claim badge, toast thành tựu mới
+- [x] Active/equipped skill slots MVP: 3 ô active, guard skill chưa học, combat ưu tiên active skill server-side
 - [x] **Inventory / Equipment MVP hoàn chỉnh** (Session 9):
   - 6 slot trang bị: weapon, armor, hat, belt, boots, accessory — tất cả có item trong catalog
   - Catalog mở rộng: 35 items (vũ khí, giáp, mũ, đai, giày, phụ kiện, đan, thảo dược, quặng)
@@ -239,6 +240,7 @@ Phiên AI: Docs audit — skill combat, daily reset 04:00, achievement UI/toast,
 | `artifacts/api-server/src/routes/character.ts` | daily-reward với 7-day streak + economy log |
 | `artifacts/api-server/src/routes/dungeon.ts` | Dungeon combat + final boss + economy log |
 | `artifacts/api-server/src/routes/boss.ts` | Boss combat + economy log + pass XP |
+| `artifacts/api-server/src/routes/skill.ts` | Learn skill + active skill equip/unequip guard |
 | `artifacts/api-server/src/routes/mission.ts` | Mission complete + economy log + pass XP |
 | `artifacts/api-server/src/routes/npc.ts` | NPC dialogue/quest APIs + affinity get/talk APIs |
 | `artifacts/api-server/src/routes/achievement.ts` | Achievement list + server-side reward claim |
@@ -246,6 +248,8 @@ Phiên AI: Docs audit — skill combat, daily reset 04:00, achievement UI/toast,
 | `lib/db/src/schema/battle_pass.ts` | battlePassSeasonsTable + battlePassProgressTable + BattlePassTier |
 | `lib/db/src/schema/economy_logs.ts` | economyLogsTable |
 | `lib/db/src/schema/npc_affinity.ts` | `character_npc_affinity` unique `(char_id, npc_id)` table |
+| `lib/db/src/schema/skills.ts` | `character_skills.active_slot` for active skill MVP |
+| `lib/db/src/schema/missions.ts` | `mission_templates.affinity_required` for NPC gated quests |
 | `lib/db/src/schema/characters.ts` | loginStreak + loginStreakUpdatedAt columns |
 | `artifacts/tu-tien-lo/src/pages/battle-pass.tsx` | Battle Pass UI — tiers, XP bar, claim |
 | `artifacts/tu-tien-lo/src/pages/economy-log.tsx` | Lịch Sử Kinh Tế UI — transaction log |
@@ -316,34 +320,62 @@ Phiên AI: Docs audit — skill combat, daily reset 04:00, achievement UI/toast,
 1. **Market listing** — cần có item trong inventory mới list được.
 2. **Chat** — refetch mỗi 5s, không phải WebSocket thật.
 3. **New player dungeon difficulty** — ATK=15 starter char struggles vs monHP=300. By design: equip items + skills first.
-4. **DB schema rollout** — DB thật cần chạy Drizzle schema push/preflight để có unique mission progress và `character_npc_affinity`.
+4. **DB schema rollout** — DB thật cần chạy Drizzle schema push/preflight cho `active_slot`, `affinity_required`, `character_npc_affinity`, và unique mission progress.
 5. **Achievement GET side effect** — `GET /achievement` hiện có thể auto-award newly met achievements; nên tách explicit check/event flow sau.
 6. **Vite build warning** — frontend production build còn chunk size warning, chưa phải lỗi build.
 
 ---
 
+## DB Rollout / Production Preflight
+
+Schema mới cần rollout trên DB thật:
+- `character_skills.active_slot`
+- `mission_templates.affinity_required`
+- `character_npc_affinity`
+
+Checklist đề xuất:
+```bash
+pnpm run typecheck:libs
+cd lib/db && pnpm run push-force
+cd artifacts/api-server && npx tsx src/seed.ts
+pnpm typecheck
+pnpm --filter @workspace/scripts exec tsx src/smoke-test.ts
+pnpm build
+```
+
+Ghi chú:
+- Chạy `push-force` chỉ sau khi kiểm tra schema diff và backup DB nếu là môi trường production.
+- Rerun seed để insert 3 NPC affinity-gated quests mới và refresh questIds/dialogue rank cho NPC liên quan.
+
+---
+
 ## Next Recommended Tasks (Ưu tiên cao → thấp)
 
-### P8 — NPC affinity next steps
+### P8 — DB Rollout / Production Preflight
+- [ ] Run production preflight checklist before deploying latest schema.
+- [ ] Confirm schema rollout includes `character_skills.active_slot`, `mission_templates.affinity_required`, `character_npc_affinity`.
+
+### P9 — NPC affinity next steps
 - [x] NPC affinity tracking — `character_npc_affinity` table, `GET /npc/:id/affinity`, `POST /npc/:id/talk`
 - [x] Affinity bar/action trong NPC page
-- [ ] Talk cooldown hoặc daily talk limit
-- [ ] Unlock new dialogue at affinity thresholds 20/50/80
-- [ ] Quest gating/flavor text dựa trên affinity rank
-- [ ] Apply Drizzle schema push cho `character_npc_affinity` trên DB thật
+- [x] Talk cooldown / daily talk limit theo reset window 04:00
+- [x] Unlock dialogue at affinity thresholds 20/50/80
+- [x] Quest gating/flavor text dựa trên affinity rank
+- [ ] Richer affinity dialogue/reward ở các mốc thân thiết cao hơn
 
-### P9 — Content expansion
+### P10 — Content expansion
 - [ ] Thêm quest cho Kim Đan và Nguyên Anh tier (chỉ sửa seed.ts + re-seed)
 - [ ] More alchemy recipes (cao cấp hơn)
 - [ ] Thêm item drops từ boss
 
-### P10 — Social & Economy
+### P11 — Social & Economy
 - [x] Achievement notification badge/toast
 - [ ] Make achievement checking explicit hoặc move `newlyEarned` vào action responses để tránh side effect trên GET
 - [ ] Auction marketplace (bid thay vì mua ngay)
 - [ ] PvP arena (challenge/duel, betting)
 
-### P11 — Next Systems
+### P12 — Next Systems
+- [ ] Active skill panel nhỏ trên Dungeon/Boss trước khi vào combat
 - [ ] Pet / Companion MVP
 - [ ] Dungeon boss nhiều tầng hơn
 - [ ] Guild war / sect war foundation
@@ -368,7 +400,7 @@ Phiên AI: Docs audit — skill combat, daily reset 04:00, achievement UI/toast,
 | Skill templates | 7 | (cùng seed) |
 | Dungeon templates | 6 | (cùng seed) |
 | Boss templates | 5 | (cùng seed) |
-| Mission templates | 17 | (cùng seed) |
+| Mission templates | 20 | (cùng seed; gồm 3 NPC affinity-gated quest) |
 | NPCs | 6 | (cùng seed) |
 | Sects | 5 | (cùng seed) |
 | Battle Pass Season | 1 | "Mùa 1 — Khai Thiên" (onConflictDoNothing) |
@@ -1012,3 +1044,43 @@ cd artifacts/api-server && npx tsx src/seed.ts
 ### Next Recommended Tasks
 - Add a small active-skill panel to Dungeon/Boss pages so players see equipped skills before entering combat.
 - Add DB preflight/migration docs for `active_slot`, `affinity_required`, and NPC affinity tables.
+
+---
+
+## Session Update - 2026-05-07 03:32:04 +07:00
+
+### Task Done
+- Docs-only audit of `README.md` and `HANDOFF.md` after the latest 4 gameplay commits.
+
+### Files Read
+- `README.md`
+- `HANDOFF.md`
+- `artifacts/api-server/src/seed.ts`
+- Recent repo state from `git status` / `git pull origin main`
+
+### Files Changed
+- `README.md`
+- `HANDOFF.md`
+
+### Logic New / Fixed
+- No feature code changed.
+- Removed completed work from remaining-task lists: active/equipped skill slots, NPC talk cooldown, affinity dialogue/quest gating.
+- Updated mission template count from 17 to 20.
+- Added `DB Rollout / Production Preflight` instructions and listed required rollout schema: `active_slot`, `affinity_required`, `character_npc_affinity`.
+
+### Commands Run
+- `git status --short --branch`
+- `git pull origin main`
+- `rg -n ... README.md HANDOFF.md artifacts/api-server/src/seed.ts`
+- `pnpm typecheck`
+
+### Test / Build Result
+- PASS: `pnpm typecheck`
+- Build not rerun because this was docs-only.
+
+### Known Risks
+- Production DB still needs explicit rollout/preflight before latest schema-dependent features are enabled.
+
+### Next Recommended Tasks
+- Execute DB rollout checklist in the target environment.
+- Continue with active skill preview panel on Dungeon/Boss pages or Pet/Companion MVP.
