@@ -245,6 +245,29 @@ const cooldownCast = resolveSkillCast({
 });
 assert("Đang cooldown thì không cast skill", cooldownCast.skill === null);
 
+const strongerInactiveSkill = { ...fireSkill, id: "loi_bat", name: "Lôi Bạt", element: "loi", damageMultiplier: 1.6 };
+const weakerActiveSkill = { ...fireSkill, id: "hoa_cau_active", name: "Hỏa Cầu Active", damageMultiplier: 1.2, activeSlot: 1 };
+const activeCast = resolveSkillCast({
+  learnedSkills: [strongerInactiveSkill, weakerActiveSkill],
+  playerElement: "kim",
+  targetElement: "moc",
+  spiritualRootGrade: "common",
+  mpRemaining: 50,
+  round: 1,
+  nextAvailableRound: 1,
+});
+assert("Có active skill thì combat ưu tiên skill active đã chọn", activeCast.skill?.id === "hoa_cau_active");
+const fallbackCast = resolveSkillCast({
+  learnedSkills: [strongerInactiveSkill, { ...weakerActiveSkill, activeSlot: null }],
+  playerElement: "kim",
+  targetElement: "moc",
+  spiritualRootGrade: "common",
+  mpRemaining: 50,
+  round: 1,
+  nextAvailableRound: 1,
+});
+assert("Không chọn active thì fallback dùng skill học mạnh nhất", fallbackCast.skill?.id === "loi_bat");
+
 // ── 12. Daily grind mission reset ─────────────────────────────────────────
 console.log("\n[12] Daily Grind Mission Reset");
 const dailyTemplate = { type: "grind" };

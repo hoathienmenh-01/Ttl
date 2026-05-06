@@ -14,6 +14,7 @@ export type CombatSkill = {
   mpCost: number | null;
   cooldownSeconds: number | null;
   damageMultiplier: number | null;
+  activeSlot?: number | null;
 };
 
 export type SkillCastResult = {
@@ -53,10 +54,12 @@ export function resolveSkillCast(input: {
     return { skill: null, damageMultiplier: 1, mpCost: 0, cooldownRounds: 0, log: null };
   }
 
-  const candidates = input.learnedSkills
+  const learnedCandidates = input.learnedSkills
     .filter(s => s.type === "attack")
     .filter(s => (s.damageMultiplier ?? 1) > 1)
     .filter(s => Math.max(0, s.mpCost ?? 0) <= input.mpRemaining);
+  const activeCandidates = learnedCandidates.filter(s => s.activeSlot != null);
+  const candidates = activeCandidates.length ? activeCandidates : learnedCandidates;
 
   if (!candidates.length) {
     return { skill: null, damageMultiplier: 1, mpCost: 0, cooldownRounds: 0, log: null };
@@ -73,7 +76,12 @@ export function resolveSkillCast(input: {
         damageMultiplier: clamp(rawMultiplier, 1, SKILL_DAMAGE_MULTIPLIER_CAP),
       };
     })
-    .sort((a, b) => b.damageMultiplier - a.damageMultiplier);
+    .sort((a, b) => {
+      const slotA = a.skill.activeSlot ?? Number.MAX_SAFE_INTEGER;
+      const slotB = b.skill.activeSlot ?? Number.MAX_SAFE_INTEGER;
+      if (slotA !== slotB) return slotA - slotB;
+      return b.damageMultiplier - a.damageMultiplier;
+    });
 
   const best = ranked[0];
   const mpCost = Math.max(0, best.skill.mpCost ?? 0);

@@ -23,11 +23,11 @@ async function getChar(userId: string) {
 
 async function getCharSkills(charId: string) {
   const rows = await db
-    .select({ skill: skillTemplatesTable })
+    .select({ skill: skillTemplatesTable, activeSlot: characterSkillsTable.activeSlot })
     .from(characterSkillsTable)
     .innerJoin(skillTemplatesTable, eq(characterSkillsTable.skillId, skillTemplatesTable.id))
     .where(eq(characterSkillsTable.charId, charId));
-  return rows.map(r => r.skill);
+  return rows.map(r => ({ ...r.skill, activeSlot: r.activeSlot }));
 }
 
 async function ensureBossSpawns() {
@@ -164,7 +164,14 @@ router.post("/boss/:bossId/attack", requireAuth, async (req, res) => {
 
   res.json({
     playerDmg, bossDmg: bossKilled ? 0 : bossDmg, bossKilled, drops,
-    skillUsed: skillCast.skill ? { id: skillCast.skill.id, name: skillCast.skill.name, mpCost: skillCast.mpCost } : null,
+    skillUsed: skillCast.skill ? {
+      id: skillCast.skill.id,
+      name: skillCast.skill.name,
+      mpCost: skillCast.mpCost,
+      mpConsumed: skillCast.mpCost,
+      cooldownRounds: skillCast.cooldownRounds,
+      log: skillCast.log,
+    } : null,
     mpRemaining: Math.max(0, char.mp - skillCast.mpCost),
     expGained, linhThachGained, newlyEarned, completedMissions,
     message: bossKilled ? `Đã hạ ${template.name}! Nhận ${expGained} EXP và ${linhThachGained} Linh Thạch.`

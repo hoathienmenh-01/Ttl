@@ -27,11 +27,11 @@ async function getChar(userId: string) {
 
 async function getCharSkills(charId: string) {
   const rows = await db
-    .select({ skill: skillTemplatesTable })
+    .select({ skill: skillTemplatesTable, activeSlot: characterSkillsTable.activeSlot })
     .from(characterSkillsTable)
     .innerJoin(skillTemplatesTable, eq(characterSkillsTable.skillId, skillTemplatesTable.id))
     .where(eq(characterSkillsTable.charId, charId));
-  return rows.map(r => r.skill);
+  return rows.map(r => ({ ...r.skill, activeSlot: r.activeSlot }));
 }
 
 router.get("/dungeon", async (req, res) => {
@@ -114,6 +114,7 @@ router.post("/dungeon/:dungeonId/enter", requireAuth, async (req, res) => {
   let charMp = char.mp;
   let combatRound = 0;
   let nextSkillRound = 1;
+  const skillUsage = new Map<string, { id: string; name: string; casts: number; mpConsumed: number; cooldownRounds: number; log: string | null }>();
   let totalExpGained = 0;
   let totalLinhThach = 0;
   let victory = true;
@@ -141,6 +142,19 @@ router.post("/dungeon/:dungeonId/enter", requireAuth, async (req, res) => {
       if (skillCast.skill) {
         charMp = Math.max(0, charMp - skillCast.mpCost);
         nextSkillRound = combatRound + skillCast.cooldownRounds;
+        const prev = skillUsage.get(skillCast.skill.id) ?? {
+          id: skillCast.skill.id,
+          name: skillCast.skill.name,
+          casts: 0,
+          mpConsumed: 0,
+          cooldownRounds: skillCast.cooldownRounds,
+          log: skillCast.log,
+        };
+        prev.casts += 1;
+        prev.mpConsumed += skillCast.mpCost;
+        prev.cooldownRounds = skillCast.cooldownRounds;
+        prev.log = skillCast.log;
+        skillUsage.set(skillCast.skill.id, prev);
         if (skillCast.log) logs.push(skillCast.log);
       }
       const effectiveAtk = Math.round(char.atk * rootCombatMod);
@@ -254,6 +268,8 @@ router.post("/dungeon/:dungeonId/enter", requireAuth, async (req, res) => {
     linhThachGained: totalLinhThach,
     hpRemaining: finalHp,
     mpRemaining: charMp,
+    skillUsed: Array.from(skillUsage.values())[0] ?? null,
+    skillUsage: Array.from(skillUsage.values()),
     staminaRemaining: finalStamina,
     staminaCost,
     elementMessage: elementMsg,

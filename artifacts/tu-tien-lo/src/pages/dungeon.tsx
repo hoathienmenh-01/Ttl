@@ -46,8 +46,10 @@ function useEnterDungeon() {
 
 type CombatResult = {
   victory: boolean; logs: string[]; expGained: number; linhThachGained: number;
-  hpRemaining: number; staminaRemaining: number; staminaCost: number;
+  hpRemaining: number; mpRemaining?: number; staminaRemaining: number; staminaCost: number;
   drops: string[]; elementMessage: string; message: string;
+  skillUsed?: { id: string; name: string; mpConsumed?: number; mpCost?: number; cooldownRounds?: number; log?: string | null } | null;
+  skillUsage?: { id: string; name: string; casts: number; mpConsumed: number; cooldownRounds: number; log?: string | null }[];
   newlyEarned?: string[]; completedMissions?: string[];
 };
 
@@ -237,6 +239,17 @@ export default function DungeonPage() {
 
             {/* Combat log */}
             <CardLabel>Nhật Ký Chiến Đấu</CardLabel>
+            {(result.skillUsage?.length || result.skillUsed) && (
+              <div className="mt-2 mb-3 rounded-sm border border-blue-900/30 bg-blue-950/10 px-3 py-2 text-xs text-blue-300">
+                <div className="font-medium text-blue-200 mb-1">Pháp thuật đã dùng</div>
+                {(result.skillUsage?.length ? result.skillUsage : result.skillUsed ? [{ ...result.skillUsed, casts: 1, mpConsumed: result.skillUsed.mpConsumed ?? result.skillUsed.mpCost ?? 0 }] : []).map((s) => (
+                  <div key={s.id}>
+                    {s.name} · {s.casts} lần · -{s.mpConsumed} MP{s.cooldownRounds ? ` · CD ${s.cooldownRounds} lượt` : ""}
+                  </div>
+                ))}
+                {typeof result.mpRemaining === "number" && <div className="text-blue-500 mt-1">MP còn lại: {result.mpRemaining}</div>}
+              </div>
+            )}
             <div className="mt-2 mb-4 space-y-0.5 max-h-44 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-amber-950/20 [&::-webkit-scrollbar-thumb]:bg-amber-800/40">
               {result.logs?.map((l: string, i: number) => (
                 <div key={i} className={`text-xs leading-relaxed ${

@@ -20,6 +20,7 @@ export const characterSkillsTable = pgTable("character_skills", {
   charId: text("char_id").notNull(),
   skillId: text("skill_id").notNull(),
   level: integer("level").default(1),
+  activeSlot: integer("active_slot"),
   learnedAt: timestamp("learned_at").defaultNow().notNull(),
 });
 

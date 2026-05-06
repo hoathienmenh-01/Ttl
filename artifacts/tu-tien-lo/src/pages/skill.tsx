@@ -29,6 +29,20 @@ function useLearnSkill() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["skill-mine"] }); qc.invalidateQueries({ queryKey: ["character"] }); },
   });
 }
+function useEquipSkill() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ skillId, slot }: { skillId: string; slot: number }) => apiPost(`/skill/${skillId}/equip`, { slot }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["skill-mine"] }),
+  });
+}
+function useUnequipSkill() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (skillId: string) => apiPost(`/skill/${skillId}/unequip`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["skill-mine"] }),
+  });
+}
 
 export default function SkillPage() {
   const [tab, setTab] = useState<"catalog" | "mine">("catalog");
@@ -36,6 +50,8 @@ export default function SkillPage() {
   const { data: catalog, isLoading: catalogLoading } = useCatalog();
   const { data: mine, isLoading: mineLoading } = useMineSkills();
   const learn = useLearnSkill();
+  const equip = useEquipSkill();
+  const unequip = useUnequipSkill();
 
   const learnedIds = new Set((mine ?? []).map((s: any) => s.skillId));
 
@@ -48,6 +64,19 @@ export default function SkillPage() {
       const r = await learn.mutateAsync(skillId);
       toast.success(r.message || `Đã học ${name}`);
     } catch (e: any) { toast.error(e.message || "Học pháp thuật thất bại"); }
+  }
+
+  async function handleEquip(skillId: string, slot: number) {
+    try {
+      const r = await equip.mutateAsync({ skillId, slot }) as any;
+      toast.success(r.message || `Đã đặt vào ô ${slot}`);
+    } catch (e: any) { toast.error(e.data?.error || e.message || "Trang bị pháp thuật thất bại"); }
+  }
+  async function handleUnequip(skillId: string) {
+    try {
+      const r = await unequip.mutateAsync(skillId) as any;
+      toast.success(r.message || "Đã gỡ pháp thuật");
+    } catch (e: any) { toast.error(e.data?.error || e.message || "Gỡ pháp thuật thất bại"); }
   }
 
   const elements = ["", "kim", "moc", "thuy", "hoa", "tho", "loi", "bang"];
@@ -154,6 +183,27 @@ export default function SkillPage() {
                       <span className="text-amber-700">MP: {s.mpCost}</span>
                       {s.damageMultiplier > 1 && <span className="text-red-700">x{s.damageMultiplier}</span>}
                       {s.healMultiplier > 0 && <span className="text-emerald-700">x{s.healMultiplier} hồi</span>}
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-1">
+                      {[1, 2, 3].map(slot => (
+                        <button
+                          key={slot}
+                          onClick={() => handleEquip(s.skillId, slot)}
+                          disabled={equip.isPending}
+                          className={`px-2 py-1 text-xs rounded-sm border transition-all ${s.activeSlot === slot ? "border-amber-500/60 text-amber-300 bg-amber-900/20" : "border-amber-900/30 text-amber-700 hover:text-amber-400"}`}
+                        >
+                          Ô {slot}
+                        </button>
+                      ))}
+                      {s.activeSlot && (
+                        <button
+                          onClick={() => handleUnequip(s.skillId)}
+                          disabled={unequip.isPending}
+                          className="px-2 py-1 text-xs rounded-sm border border-red-900/30 text-red-700 hover:text-red-500"
+                        >
+                          Gỡ
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

@@ -950,3 +950,65 @@ cd artifacts/api-server && npx tsx src/seed.ts
 ### Next Recommended Tasks
 - Add richer dialogue/quest rewards at higher affinity ranks.
 - Add migration/preflight documentation for applying `affinity_required` and NPC affinity tables in production.
+
+---
+
+## Session Update - 2026-05-07 00:21:44 +07:00
+
+### Task Done
+- Added active/equipped skill slots and combat skill usage summaries.
+
+### Files Read
+- `HANDOFF.md`
+- `lib/db/src/schema/skills.ts`
+- `artifacts/api-server/src/lib/skillCombat.ts`
+- `artifacts/api-server/src/routes/skill.ts`
+- `artifacts/api-server/src/routes/dungeon.ts`
+- `artifacts/api-server/src/routes/boss.ts`
+- `artifacts/tu-tien-lo/src/pages/skill.tsx`
+- `artifacts/tu-tien-lo/src/pages/dungeon.tsx`
+- `artifacts/tu-tien-lo/src/pages/boss.tsx`
+- `scripts/src/smoke-test.ts`
+
+### Files Changed
+- `lib/db/src/schema/skills.ts`
+- `artifacts/api-server/src/lib/skillCombat.ts`
+- `artifacts/api-server/src/routes/skill.ts`
+- `artifacts/api-server/src/routes/dungeon.ts`
+- `artifacts/api-server/src/routes/boss.ts`
+- `artifacts/tu-tien-lo/src/pages/skill.tsx`
+- `artifacts/tu-tien-lo/src/pages/dungeon.tsx`
+- `artifacts/tu-tien-lo/src/pages/boss.tsx`
+- `scripts/src/smoke-test.ts`
+- `HANDOFF.md`
+
+### Logic New / Fixed
+- Added nullable `character_skills.active_slot` for MVP active skill slots 1-3.
+- Added `POST /skill/:skillId/equip` and `POST /skill/:skillId/unequip`.
+- Equip guard rejects unknown slots and skills the character has not learned with `SKILL_NOT_LEARNED`.
+- Combat remains server-authoritative. If any attack skill is active, dungeon/boss combat chooses only active attack skills by slot priority; otherwise it falls back to learned attack skills as before.
+- Dungeon response now includes `skillUsed` and `skillUsage` with casts, MP consumed, cooldown rounds, and remaining MP.
+- Boss response now includes richer `skillUsed` with MP consumed, cooldown rounds, log, and remaining MP.
+- Skill page can assign learned skills to active slots and unequip them.
+- Dungeon/Boss UI shows skill usage summaries from server response only; no client-side damage calculation was added.
+
+### Commands Run
+- `git status --short --branch`
+- `git pull origin main`
+- `pnpm typecheck`
+- `pnpm --filter @workspace/scripts exec tsx src/smoke-test.ts`
+- `pnpm build`
+
+### Test / Build Result
+- PASS: `pnpm typecheck`
+- PASS: smoke test, `73 passed / 0 failed / 73 total`
+- PASS: `pnpm build`
+- Note: known Vite chunk size warning remains non-blocking.
+
+### Known Risks
+- Existing DBs need Drizzle schema push before `active_slot` exists.
+- Active skill cooldown is still per combat request/round, not persisted between separate boss attack requests.
+
+### Next Recommended Tasks
+- Add a small active-skill panel to Dungeon/Boss pages so players see equipped skills before entering combat.
+- Add DB preflight/migration docs for `active_slot`, `affinity_required`, and NPC affinity tables.
