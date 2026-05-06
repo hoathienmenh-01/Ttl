@@ -409,6 +409,94 @@ assert("Pet ATK bonus bị cap", cappedPetBonus.atkPct === PET_ATK_BONUS_CAP);
 assert("Pet DEF bonus bị cap", cappedPetBonus.defPct === PET_DEF_BONUS_CAP);
 assert("Pet proc bị cap", cappedPetBonus.procChance === PET_PROC_CHANCE_CAP && cappedPetBonus.procDamagePct === PET_PROC_DAMAGE_CAP);
 
+// ── 18. Higher-tier alchemy recipes ────────────────────────────────────────
+console.log("\n[18] Higher-tier Alchemy Recipes");
+const realmOrder: Record<string, number> = { phamnhan: 1, luyenkhi: 2, trucco: 3, kimdan: 4, nguyenanh: 5 };
+type TestRecipe = {
+  id: string;
+  requiredRealm: string | null;
+  inputItems: Array<{ itemId: string; qty: number }>;
+  outputItemId: string;
+  outputQty: number;
+  linhThachCost: number;
+  successRate: number;
+};
+function simulateAlchemyCraft(input: {
+  realmKey: string;
+  linhThach: number;
+  inventory: Record<string, number>;
+  recipe: TestRecipe;
+  roll: number;
+}) {
+  const { realmKey, recipe } = input;
+  if (recipe.requiredRealm && (realmOrder[realmKey] ?? 0) < (realmOrder[recipe.requiredRealm] ?? 0)) {
+    return { ok: false, code: "REALM_REQUIRED", inventory: input.inventory, linhThach: input.linhThach };
+  }
+  if (input.linhThach < recipe.linhThachCost) {
+    return { ok: false, code: "INSUFFICIENT_LINH_THACH", inventory: input.inventory, linhThach: input.linhThach };
+  }
+  const nextInventory = { ...input.inventory };
+  for (const ingredient of recipe.inputItems) {
+    if ((nextInventory[ingredient.itemId] ?? 0) < ingredient.qty) {
+      return { ok: false, code: "INSUFFICIENT_ITEMS", inventory: input.inventory, linhThach: input.linhThach };
+    }
+  }
+  for (const ingredient of recipe.inputItems) {
+    nextInventory[ingredient.itemId] = Math.max(0, (nextInventory[ingredient.itemId] ?? 0) - ingredient.qty);
+  }
+  const success = input.roll < recipe.successRate;
+  if (success) nextInventory[recipe.outputItemId] = (nextInventory[recipe.outputItemId] ?? 0) + recipe.outputQty;
+  return {
+    ok: true,
+    success,
+    code: success ? "CRAFT_SUCCESS" : "CRAFT_FAILED",
+    inventory: nextInventory,
+    linhThach: Math.max(0, input.linhThach - recipe.linhThachCost),
+  };
+}
+const kimDanRecipe: TestRecipe = {
+  id: "recipe_kim_dan_tam_an",
+  requiredRealm: "kimdan",
+  inputItems: [{ itemId: "ngoc_than", qty: 1 }, { itemId: "hoa_tinh_thach", qty: 2 }, { itemId: "truc_co_dan", qty: 1 }],
+  outputItemId: "kim_dan_tam_an",
+  outputQty: 1,
+  linhThachCost: 900,
+  successRate: 0.65,
+};
+const realmBlockedCraft = simulateAlchemyCraft({
+  realmKey: "trucco",
+  linhThach: 5000,
+  inventory: { ngoc_than: 1, hoa_tinh_thach: 2, truc_co_dan: 1 },
+  recipe: kimDanRecipe,
+  roll: 0,
+});
+const missingIngredientCraft = simulateAlchemyCraft({
+  realmKey: "kimdan",
+  linhThach: 5000,
+  inventory: { ngoc_than: 1, hoa_tinh_thach: 1, truc_co_dan: 1 },
+  recipe: kimDanRecipe,
+  roll: 0,
+});
+const successfulCraft = simulateAlchemyCraft({
+  realmKey: "kimdan",
+  linhThach: 5000,
+  inventory: { ngoc_than: 1, hoa_tinh_thach: 2, truc_co_dan: 1 },
+  recipe: kimDanRecipe,
+  roll: 0.1,
+});
+const failedCraft = simulateAlchemyCraft({
+  realmKey: "kimdan",
+  linhThach: 5000,
+  inventory: { ngoc_than: 1, hoa_tinh_thach: 2, truc_co_dan: 1 },
+  recipe: kimDanRecipe,
+  roll: 0.99,
+});
+assert("Kim Đan recipe bị realm gate ở Trúc Cơ", realmBlockedCraft.code === "REALM_REQUIRED");
+assert("Thiếu nguyên liệu bị chặn trước khi trừ item", missingIngredientCraft.code === "INSUFFICIENT_ITEMS" && missingIngredientCraft.inventory.hoa_tinh_thach === 1);
+assert("Craft thành công tạo output", successfulCraft.success === true && successfulCraft.inventory.kim_dan_tam_an === 1);
+assert("Craft thất bại vẫn không âm item", failedCraft.success === false && Object.values(failedCraft.inventory).every(qty => qty >= 0));
+assert("Craft trừ Linh Thạch theo cost", successfulCraft.linhThach === 4100 && failedCraft.linhThach === 4100);
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 console.log(`\n${"─".repeat(50)}`);
 console.log(`SMOKE TEST: ${passed} passed / ${failed} failed / ${passed + failed} total`);

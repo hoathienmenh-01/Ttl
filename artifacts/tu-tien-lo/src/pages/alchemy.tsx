@@ -7,6 +7,9 @@ const REALM_NAMES: Record<string, string> = {
   phamnhan: "Phàm Nhân", luyenkhi: "Luyện Khí", trucco: "Trúc Cơ",
   kimdan: "Kim Đan", nguyenanh: "Nguyên Anh",
 };
+const REALM_ORDER: Record<string, number> = {
+  phamnhan: 1, luyenkhi: 2, trucco: 3, kimdan: 4, nguyenanh: 5,
+};
 
 export default function AlchemyPage() {
   const { data: recipes = [], isLoading } = useAlchemyRecipes();
@@ -23,11 +26,16 @@ export default function AlchemyPage() {
 
   function canCraft(recipe: any): boolean {
     if (!char) return false;
+    if (recipe.requiredRealm && (REALM_ORDER[char.realmKey] ?? 0) < (REALM_ORDER[recipe.requiredRealm] ?? 0)) return false;
     if (char.linhThach < recipe.linhThachCost) return false;
     for (const inp of recipe.inputItems) {
       if ((invMap.get(inp.itemId) ?? 0) < inp.qty) return false;
     }
     return true;
+  }
+
+  function isRealmLocked(recipe: any): boolean {
+    return !!recipe.requiredRealm && (REALM_ORDER[char?.realmKey ?? ""] ?? 0) < (REALM_ORDER[recipe.requiredRealm] ?? 0);
   }
 
   async function handleCraft(recipeId: string) {
@@ -48,7 +56,7 @@ export default function AlchemyPage() {
         toast.error(r.message);
       }
     } catch (e: any) {
-      toast.error(e.message || "Luyện đan thất bại");
+      toast.error(e?.data?.error || e.message || "Luyện đan thất bại");
     } finally {
       setCraftingId(null);
     }
@@ -95,8 +103,10 @@ export default function AlchemyPage() {
           {(recipes as any[]).map(recipe => {
             const craftable   = canCraft(recipe);
             const lsOk        = (char?.linhThach ?? 0) >= recipe.linhThachCost;
+            const realmLocked = isRealmLocked(recipe);
             const successPct  = Math.round(recipe.successRate * 100);
             const isThisCraft = craftingId === recipe.id;
+            const missingItems = recipe.inputItems.filter((inp: any) => (invMap.get(inp.itemId) ?? 0) < inp.qty);
 
             return (
               <Card
@@ -149,7 +159,7 @@ export default function AlchemyPage() {
                   </div>
                   <div className="flex items-center gap-2 text-xs">
                     {recipe.requiredRealm && (
-                      <span className="text-amber-900 border border-amber-950/60 px-1.5 py-0.5 rounded-sm">
+                      <span className={`${realmLocked ? "text-red-700 border-red-900/50" : "text-amber-900 border-amber-950/60"} border px-1.5 py-0.5 rounded-sm`}>
                         {REALM_NAMES[recipe.requiredRealm] ?? recipe.requiredRealm}+
                       </span>
                     )}
@@ -168,7 +178,7 @@ export default function AlchemyPage() {
                       : "bg-[#0f0c06] border-amber-950/30 text-amber-900 cursor-not-allowed"
                   } disabled:opacity-50`}
                 >
-                  {isThisCraft ? "ĐANG LUYỆN ĐAN..." : craftable ? "LUYỆN ĐAN" : "Thiếu Nguyên Liệu"}
+                  {isThisCraft ? "ĐANG LUYỆN ĐAN..." : craftable ? "LUYỆN ĐAN" : realmLocked ? "Chưa Đủ Cảnh Giới" : missingItems.length ? "Thiếu Nguyên Liệu" : !lsOk ? "Thiếu Linh Thạch" : "Không Thể Luyện"}
                 </button>
               </Card>
             );

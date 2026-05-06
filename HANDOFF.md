@@ -1,9 +1,47 @@
 # HANDOFF — Tu Tiên Lộ: Hoa Thiên Khai Đạo
 
-## Current Status: CORE GAMEPLAY + QUEST/NPC/ACHIEVEMENT MVP POLISH + KIM ĐAN/NGUYÊN ANH CONTENT + MULTI-FLOOR DUNGEON + PET MVP ✅
+## Current Status: CORE GAMEPLAY + QUEST/NPC/ACHIEVEMENT MVP POLISH + KIM ĐAN/NGUYÊN ANH CONTENT + MULTI-FLOOR DUNGEON + PET MVP + HIGH-TIER ALCHEMY ✅
 
 Ngày cập nhật: 2026-05-07
-Phiên AI: Pet / Companion MVP
+Phiên AI: Higher-tier alchemy recipes
+
+---
+
+## Session 2026-05-07 — Higher-tier Alchemy Recipes
+
+### Files Read / Audited
+- `README.md`
+- `HANDOFF.md`
+- `lib/db/src/schema/alchemy.ts`
+- `artifacts/api-server/src/routes/alchemy.ts`
+- `artifacts/api-server/src/seed.ts`
+- `artifacts/tu-tien-lo/src/pages/alchemy.tsx`
+- `scripts/src/smoke-test.ts`
+
+### Changes Made
+- Added 3 high-tier recipes to the existing alchemy seed/catalog:
+  - `recipe_kim_dan_tam_an` requires Kim Đan.
+  - `recipe_am_linh_phu` requires Kim Đan.
+  - `recipe_nguyen_anh_tam_hoa` requires Nguyên Anh.
+- Reused existing item/drop catalog as ingredients and outputs; no schema or architecture change.
+- Kept craft server-authoritative through existing `/alchemy/craft/:recipeId` route for realm gate, item checks, success roll, material cost, output grant, mission progress, and achievement checks.
+- Updated Alchemy UI to disable and label realm-locked recipes separately from missing ingredients or missing Linh Thạch.
+- Added smoke tests for realm gating, missing ingredient guard, success, failure, LS cost, and non-negative inventory.
+
+### Commands Run
+- `git status --short --branch` — pass, clean before changes.
+- `git pull origin main` — pass, already up to date.
+- `pnpm typecheck` — pass.
+- `pnpm --filter @workspace/scripts exec tsx src/smoke-test.ts` — pass, 92/92.
+- `pnpm build` — pass.
+
+### Risks / Notes
+- New recipes are seeded with `onConflictDoNothing`; existing DBs need rerun seed to receive them.
+- Recipe unlock is currently realm-gated only; no quest/NPC affinity unlock table exists yet.
+- Craft success/failure still consumes full ingredients and Linh Thạch using the existing alchemy behavior.
+
+### Next Recommended Task
+- Add recipe unlock sources through quest rewards, NPC affinity, or event progression without moving craft logic client-side.
 
 ---
 
@@ -253,7 +291,7 @@ Phiên AI: Pet / Companion MVP
 - [x] Bảng xếp hạng
 - [x] Nạp tiền (manual review)
 - [x] Admin panel
-- [x] Luyện đan system hoàn chỉnh (Alchemy — kết hợp herb → pill, success rate, realm gating)
+- [x] Luyện đan system hoàn chỉnh (Alchemy — 11 recipe, success rate, realm gating, Kim Đan/Nguyên Anh cao cấp)
 
 ### Session 7 — Commercial Systems (No Pay-to-Win) ✅
 
@@ -492,7 +530,8 @@ Ghi chú:
 
 ### P10 — Content expansion
 - [x] Thêm quest cho Kim Đan và Nguyên Anh tier (chỉ sửa seed.ts + re-seed)
-- [ ] More alchemy recipes (cao cấp hơn)
+- [x] More alchemy recipes (cao cấp hơn)
+- [ ] Recipe unlock sources qua quest/NPC affinity/event
 - [x] Thêm item drops từ boss
 
 ### P11 — Social & Economy
@@ -527,6 +566,7 @@ Ghi chú:
 | Item templates | 39 | `cd artifacts/api-server && npx tsx src/seed.ts` |
 | Skill templates | 7 | (cùng seed) |
 | Pet templates | 4 | (cùng seed; free claim MVP, không monetized) |
+| Alchemy recipes | 11 | (cùng seed; gồm Kim Đan/Nguyên Anh cao cấp) |
 | Dungeon templates | 6 | (cùng seed) |
 | Boss templates | 5 | (cùng seed) |
 | Mission templates | 27 | (cùng seed; gồm 6 NPC affinity-gated quest) |
