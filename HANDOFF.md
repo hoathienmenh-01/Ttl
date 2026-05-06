@@ -1,9 +1,9 @@
 # HANDOFF — Tu Tiên Lộ: Hoa Thiên Khai Đạo
 
-## Current Status: CORE GAMEPLAY POLISH PHASE ✅
+## Current Status: CORE GAMEPLAY + QUEST/NPC/ACHIEVEMENT MVP POLISH ✅
 
-Ngày cập nhật: 2026-05-03
-Phiên AI: Build session 8 — Linh Căn + Ngũ Hành gameplay polish
+Ngày cập nhật: 2026-05-06
+Phiên AI: Docs audit — skill combat, daily reset 04:00, achievement UI/toast, NPC affinity MVP đã hoàn thiện
 
 ---
 
@@ -59,7 +59,7 @@ Phiên AI: Build session 8 — Linh Căn + Ngũ Hành gameplay polish
 
 ### Infrastructure
 - [x] pnpm monorepo: `artifacts/api-server` + `artifacts/tu-tien-lo` + `lib/db`
-- [x] PostgreSQL + Drizzle ORM (15 bảng)
+- [x] PostgreSQL + Drizzle ORM (schema modules đã gồm achievements, economy, battle_pass, npc_affinity)
 - [x] Express 5 API server, server-authoritative
 - [x] React + Vite + TypeScript frontend
 - [x] Tailwind CSS dark cultivation theme
@@ -97,13 +97,17 @@ Phiên AI: Build session 8 — Linh Căn + Ngũ Hành gameplay polish
 - [x] Linh căn grade ảnh hưởng nhẹ EXP, combat, và skill affinity
 - [x] Primary element + quan hệ ngũ hành ảnh hưởng combat (tương khắc / tương sinh / trung lập)
 - [x] Combat deterministic, server-authoritative
+- [x] Skill combat MVP: learned skills được dùng server-side trong dungeon/boss combat, có MP cost, cooldown vòng combat, cap sát thương
 - [x] Tu luyện nhập định (EXP tích lũy theo thời gian thực, server-authoritative)
 - [x] Đột phá cảnh giới (21 cảnh giới, server-authoritative)
 - [x] Boss thế giới với shared HP pool
 - [x] Bí cảnh 6 loại — server tính toàn bộ combat, ngũ hành modifier + final boss floor
 - [x] Pháp thuật 7 loại theo ngũ hành — học tốn Linh Thạch
-- [x] Quest: 17 nhiệm vụ (main/realm/sect/npc/grind), double-claim protected
+- [x] Quest: 17 nhiệm vụ (main/realm/sect/npc/grind), double-claim protected bằng server state/transaction guard
+- [x] Daily grind quest reset theo mốc 04:00 server local time
 - [x] NPC: 6 NPC với dialogue và quest riêng
+- [x] NPC affinity MVP: bảng `character_npc_affinity`, API get/talk, rank thresholds, UI affinity + nút trò chuyện
+- [x] Achievement MVP: catalog/check, claim reward server-side, page UI, sidebar claim badge, toast thành tựu mới
 - [x] **Inventory / Equipment MVP hoàn chỉnh** (Session 9):
   - 6 slot trang bị: weapon, armor, hat, belt, boots, accessory — tất cả có item trong catalog
   - Catalog mở rộng: 35 items (vũ khí, giáp, mũ, đai, giày, phụ kiện, đan, thảo dược, quặng)
@@ -223,6 +227,11 @@ Phiên AI: Build session 8 — Linh Căn + Ngũ Hành gameplay polish
 | File | Purpose |
 |------|---------|
 | `artifacts/api-server/src/lib/balance.ts` | ALL game constants |
+| `artifacts/api-server/src/lib/skillCombat.ts` | Learned skill combat resolver: MP cost, cooldown, affinity, damage cap |
+| `artifacts/api-server/src/lib/dailyReset.ts` | Shared 04:00 reset window helper for daily systems |
+| `artifacts/api-server/src/lib/dailyMission.ts` | Daily grind reset helpers used by mission/NPC quest APIs |
+| `artifacts/api-server/src/lib/npcAffinity.ts` | NPC affinity gain/cap/rank helper |
+| `artifacts/api-server/src/lib/achievements.ts` | Achievement catalog/check/grant helper |
 | `artifacts/api-server/src/lib/economyLog.ts` | logEconomy() helper — ghi economy_logs |
 | `artifacts/api-server/src/lib/battlePassXp.ts` | grantBattlePassXp() — upsert battle_pass_progress |
 | `artifacts/api-server/src/routes/battle-pass.ts` | GET /battle-pass + POST /battle-pass/claim/:tier |
@@ -231,14 +240,20 @@ Phiên AI: Build session 8 — Linh Căn + Ngũ Hành gameplay polish
 | `artifacts/api-server/src/routes/dungeon.ts` | Dungeon combat + final boss + economy log |
 | `artifacts/api-server/src/routes/boss.ts` | Boss combat + economy log + pass XP |
 | `artifacts/api-server/src/routes/mission.ts` | Mission complete + economy log + pass XP |
+| `artifacts/api-server/src/routes/npc.ts` | NPC dialogue/quest APIs + affinity get/talk APIs |
+| `artifacts/api-server/src/routes/achievement.ts` | Achievement list + server-side reward claim |
 | `artifacts/api-server/src/seed.ts` | Battle pass season "Mùa 1 — Khai Thiên" seeded |
 | `lib/db/src/schema/battle_pass.ts` | battlePassSeasonsTable + battlePassProgressTable + BattlePassTier |
 | `lib/db/src/schema/economy_logs.ts` | economyLogsTable |
+| `lib/db/src/schema/npc_affinity.ts` | `character_npc_affinity` unique `(char_id, npc_id)` table |
 | `lib/db/src/schema/characters.ts` | loginStreak + loginStreakUpdatedAt columns |
 | `artifacts/tu-tien-lo/src/pages/battle-pass.tsx` | Battle Pass UI — tiers, XP bar, claim |
 | `artifacts/tu-tien-lo/src/pages/economy-log.tsx` | Lịch Sử Kinh Tế UI — transaction log |
+| `artifacts/tu-tien-lo/src/pages/achievement.tsx` | Achievement UI + claim states |
+| `artifacts/tu-tien-lo/src/pages/npc.tsx` | NPC quest/dialogue UI + affinity panel |
 | `artifacts/tu-tien-lo/src/lib/hooks.ts` | useBattlePass, useClaimBattlePassTier, useEconomyLog |
-| `artifacts/tu-tien-lo/src/components/GameShell.tsx` | Nav: Battle Pass + Lịch Sử added |
+| `artifacts/tu-tien-lo/src/components/GameShell.tsx` | Nav: Battle Pass/Lịch Sử/Achievement + claim badge/toast shell behavior |
+| `scripts/src/check-mission-progress-duplicates.ts` | Preflight duplicate mission progress checker before schema push |
 
 ---
 
@@ -301,16 +316,21 @@ Phiên AI: Build session 8 — Linh Căn + Ngũ Hành gameplay polish
 1. **Market listing** — cần có item trong inventory mới list được.
 2. **Chat** — refetch mỗi 5s, không phải WebSocket thật.
 3. **New player dungeon difficulty** — ATK=15 starter char struggles vs monHP=300. By design: equip items + skills first.
+4. **DB schema rollout** — DB thật cần chạy Drizzle schema push/preflight để có unique mission progress và `character_npc_affinity`.
+5. **Achievement GET side effect** — `GET /achievement` hiện có thể auto-award newly met achievements; nên tách explicit check/event flow sau.
+6. **Vite build warning** — frontend production build còn chunk size warning, chưa phải lỗi build.
 
 ---
 
 ## Next Recommended Tasks (Ưu tiên cao → thấp)
 
-### P8 — NPC relationship system
-- [ ] NPC affinity tracking — `npc_affinity` table, POST /npc/:id/talk tăng điểm
-- [ ] Unlock new dialogue at affinity thresholds (10, 25, 50)
-- [ ] Affinity bar trong NPC page
-- [ ] Cần DB migration: thêm bảng `character_npc_affinity`
+### P8 — NPC affinity next steps
+- [x] NPC affinity tracking — `character_npc_affinity` table, `GET /npc/:id/affinity`, `POST /npc/:id/talk`
+- [x] Affinity bar/action trong NPC page
+- [ ] Talk cooldown hoặc daily talk limit
+- [ ] Unlock new dialogue at affinity thresholds 20/50/80
+- [ ] Quest gating/flavor text dựa trên affinity rank
+- [ ] Apply Drizzle schema push cho `character_npc_affinity` trên DB thật
 
 ### P9 — Content expansion
 - [ ] Thêm quest cho Kim Đan và Nguyên Anh tier (chỉ sửa seed.ts + re-seed)
@@ -318,14 +338,15 @@ Phiên AI: Build session 8 — Linh Căn + Ngũ Hành gameplay polish
 - [ ] Thêm item drops từ boss
 
 ### P10 — Social & Economy
-- [ ] PvP arena (challenge/duel, betting)
-- [ ] Achievement notification popup
+- [x] Achievement notification badge/toast
+- [ ] Make achievement checking explicit hoặc move `newlyEarned` vào action responses để tránh side effect trên GET
 - [ ] Auction marketplace (bid thay vì mua ngay)
+- [ ] PvP arena (challenge/duel, betting)
 
-### P11 — Monthly Card Mock
-- [ ] 30-day "Nguyệt Thẻ Thường" — +50 LS/ngày điểm danh, design-only (mock)
-- [ ] Hiển thị badge "Thẻ Hoạt Động" trên character card
-- [ ] Cần thêm `monthly_card_active_until` column trên characters
+### P11 — Next Systems
+- [ ] Pet / Companion MVP
+- [ ] Dungeon boss nhiều tầng hơn
+- [ ] Guild war / sect war foundation
 
 ---
 
@@ -678,7 +699,7 @@ cd artifacts/api-server && npx tsx src/seed.ts
 
 ### Next Recommended Tasks
 - Move daily reset constants into a shared package if more frontend surfaces need them.
-- Add NPC affinity MVP or achievement toast when `newlyEarned` is returned.
+- Done after this session: NPC affinity MVP and achievement toast are both implemented; continue with cooldown/dialogue unlocks.
 
 ---
 
@@ -722,7 +743,7 @@ cd artifacts/api-server && npx tsx src/seed.ts
 
 ### Next Recommended Tasks
 - Consider making achievement check explicit or moving newly-earned events to action responses only.
-- Start NPC affinity MVP when a migration is acceptable.
+- NPC affinity MVP is implemented; next step is cooldown/daily talk limit and dialogue unlocks.
 
 ---
 
@@ -775,3 +796,47 @@ cd artifacts/api-server && npx tsx src/seed.ts
 - Add talk cooldown or daily talk limit.
 - Unlock extra NPC dialogue at affinity thresholds 20/50/80.
 - Add quest gating or flavor text based on affinity rank.
+
+---
+
+## Session Update - 2026-05-06 22:21:57 +07:00
+
+### Task Done
+- Docs-only audit of `README.md` and `HANDOFF.md` against the current code state.
+- Updated completed/remaining feature lists to reflect that skill combat MVP, 04:00 daily reset, achievement UI/toast, and NPC affinity MVP are already done.
+
+### Files Read
+- `README.md`
+- `HANDOFF.md`
+- `lib/db/src/schema/*`
+- `artifacts/api-server/src/*`
+- `artifacts/tu-tien-lo/src/*`
+- `scripts/src/*`
+
+### Files Changed
+- `README.md`
+- `HANDOFF.md`
+
+### Logic New / Fixed
+- No feature code changed.
+- README now lists skill combat MVP, daily grind reset at 04:00, achievement page/badge/toast, and NPC affinity MVP as completed.
+- README remaining work now focuses on active skill slots, NPC cooldown/dialogue unlocks, DB schema rollout, and future systems.
+- HANDOFF top status, completed features, key files, known issues, and next tasks were synchronized with current repo state.
+
+### Commands Run
+- `git status --short --branch`
+- `rg --files ...`
+- `rg -n ... README.md HANDOFF.md`
+- `pnpm typecheck`
+
+### Test / Build Result
+- PASS: `pnpm typecheck`
+- Build not run because this was docs-only.
+
+### Known Risks
+- Existing DB environments still need Drizzle schema push/preflight before new schema constraints and `character_npc_affinity` are guaranteed available.
+- Achievement GET side effect remains a technical-debt item.
+
+### Next Recommended Tasks
+- Add NPC talk cooldown/daily limit.
+- Make achievement checking explicit or move newly-earned events to gameplay action responses.
