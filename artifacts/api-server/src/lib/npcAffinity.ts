@@ -14,6 +14,22 @@ export function getNpcAffinityRank(affinity: number): string {
   return "xa_la";
 }
 
+export function getNpcAffinityRankForRequirement(requiredAffinity: number): string {
+  if (requiredAffinity >= 80) return "tri_ky";
+  if (requiredAffinity >= 50) return "than_thiet";
+  if (requiredAffinity >= 20) return "quen_biet";
+  return "xa_la";
+}
+
+export function isNpcAffinityRequirementMet(currentAffinity: number, requiredAffinity: number): boolean {
+  return Math.max(0, currentAffinity) >= Math.max(0, requiredAffinity);
+}
+
+export function getNpcRankDialogue(dialogue: Record<string, string> | null | undefined, rank: string): string {
+  if (!dialogue) return "";
+  return dialogue[`greet_${rank}`] ?? dialogue[rank] ?? dialogue.greet ?? "";
+}
+
 export function getNpcTalkCooldownState(lastTalkedAt: Date | null | undefined, now = new Date()): {
   canTalk: boolean;
   nextTalkAt: Date | null;

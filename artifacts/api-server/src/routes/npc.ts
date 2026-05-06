@@ -4,7 +4,14 @@ import { npcsTable, missionTemplatesTable, missionProgressTable, charactersTable
 import { eq, inArray, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { getDailyGrindAwareProgress, getDailyGrindAwareStatus } from "../lib/dailyMission";
-import { applyNpcTalkAffinity, getNpcAffinityRank, getNpcTalkCooldownState } from "../lib/npcAffinity";
+import {
+  applyNpcTalkAffinity,
+  getNpcAffinityRank,
+  getNpcAffinityRankForRequirement,
+  getNpcRankDialogue,
+  getNpcTalkCooldownState,
+  isNpcAffinityRequirementMet,
+} from "../lib/npcAffinity";
 
 const router = Router();
 
@@ -42,19 +49,29 @@ router.get("/npc/:npcId/quests", requireAuth, async (req, res) => {
 
   const templates = await db.select().from(missionTemplatesTable).where(inArray(missionTemplatesTable.id, questIds));
   const progresses = await db.select().from(missionProgressTable).where(eq(missionProgressTable.charId, char.id));
+  const affinityRows = await db.select().from(characterNpcAffinityTable)
+    .where(and(eq(characterNpcAffinityTable.charId, char.id), eq(characterNpcAffinityTable.npcId, npc.id)))
+    .limit(1);
+  const affinity = affinityRows[0]?.affinity ?? 0;
   const progressMap = new Map(progresses.map(p => [p.templateId, p]));
   const now = new Date();
 
   res.json(templates.map(t => {
     const prog = progressMap.get(t.id);
-    const status = getDailyGrindAwareStatus(t, prog, now);
+    const affinityRequired = t.affinityRequired ?? 0;
+    const affinityLocked = !isNpcAffinityRequirementMet(affinity, affinityRequired);
+    const status = affinityLocked ? "locked" : getDailyGrindAwareStatus(t, prog, now);
     return {
       id: t.id, code: t.code, name: t.name, description: t.description,
       type: t.type, npcName: t.npcName,
       availableStage: t.availableStage,
       status,
+      affinityRequired,
+      affinityLocked,
+      requiredRank: getNpcAffinityRankForRequirement(affinityRequired),
+      currentAffinity: affinity,
       rewardExp: t.rewardExp, rewardLinhThach: t.rewardLinhThach, rewardItems: t.rewardItems,
-      progress: getDailyGrindAwareProgress(t, prog, now), progressMax: t.progressMax,
+      progress: affinityLocked ? 0 : getDailyGrindAwareProgress(t, prog, now), progressMax: t.progressMax,
     };
   }).filter(q => q.availableStage === "all" || q.availableStage === stage));
 });
@@ -79,6 +96,7 @@ router.get("/npc/:npcId/affinity", requireAuth, async (req, res) => {
     npcId,
     affinity,
     rank: getNpcAffinityRank(affinity),
+    dialogue: getNpcRankDialogue(npcs[0].dialogue as Record<string, string>, getNpcAffinityRank(affinity)),
     lastTalkedAt: rows[0]?.lastTalkedAt?.toISOString() ?? null,
     canTalk: cooldown.canTalk,
     nextTalkAt: cooldown.nextTalkAt?.toISOString() ?? null,

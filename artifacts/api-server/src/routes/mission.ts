@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { missionTemplatesTable, missionProgressTable, charactersTable, inventoryItemsTable } from "@workspace/db";
+import { missionTemplatesTable, missionProgressTable, charactersTable, inventoryItemsTable, npcsTable, characterNpcAffinityTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { logEconomy } from "../lib/economyLog";
@@ -11,12 +11,35 @@ import {
   getDailyGrindAwareStatus,
   isStaleDailyGrindClaim,
 } from "../lib/dailyMission";
+import { getNpcAffinityRankForRequirement, isNpcAffinityRequirementMet } from "../lib/npcAffinity";
 
 const router = Router();
 
 async function getChar(userId: string) {
   const chars = await db.select().from(charactersTable).where(eq(charactersTable.userId, userId)).limit(1);
   return chars[0] ?? null;
+}
+
+async function getMissionAffinityState(charId: string, npcName: string | null, affinityRequired: number) {
+  if (!npcName || affinityRequired <= 0) {
+    return { currentAffinity: 0, affinityLocked: false, requiredRank: getNpcAffinityRankForRequirement(0) };
+  }
+
+  const npcs = await db.select().from(npcsTable).where(eq(npcsTable.name, npcName)).limit(1);
+  const npc = npcs[0];
+  if (!npc) {
+    return { currentAffinity: 0, affinityLocked: true, requiredRank: getNpcAffinityRankForRequirement(affinityRequired) };
+  }
+
+  const rows = await db.select().from(characterNpcAffinityTable)
+    .where(and(eq(characterNpcAffinityTable.charId, charId), eq(characterNpcAffinityTable.npcId, npc.id)))
+    .limit(1);
+  const currentAffinity = rows[0]?.affinity ?? 0;
+  return {
+    currentAffinity,
+    affinityLocked: !isNpcAffinityRequirementMet(currentAffinity, affinityRequired),
+    requiredRank: getNpcAffinityRankForRequirement(affinityRequired),
+  };
 }
 
 class RouteError extends Error {
@@ -39,18 +62,27 @@ router.get("/mission", requireAuth, async (req, res) => {
 
   const progressMap = new Map(progresses.map(p => [p.templateId, p]));
   const now = new Date();
+  const affinityStates = new Map<string, Awaited<ReturnType<typeof getMissionAffinityState>>>();
+  for (const t of templates) {
+    affinityStates.set(t.id, await getMissionAffinityState(char.id, t.npcName ?? null, t.affinityRequired ?? 0));
+  }
 
   res.json(templates.map(t => {
     const prog = progressMap.get(t.id);
-    const status = getDailyGrindAwareStatus(t, prog, now);
+    const affinityState = affinityStates.get(t.id)!;
+    const status = affinityState.affinityLocked ? "locked" : getDailyGrindAwareStatus(t, prog, now);
 
     return {
       id: t.id, code: t.code, name: t.name, description: t.description,
       type: t.type, npcName: t.npcName ?? null, realmRequired: t.realmRequired ?? null,
       objectiveType: t.objectiveType ?? null,
       status,
+      affinityRequired: t.affinityRequired ?? 0,
+      affinityLocked: affinityState.affinityLocked,
+      currentAffinity: affinityState.currentAffinity,
+      requiredRank: affinityState.requiredRank,
       rewardExp: t.rewardExp, rewardLinhThach: t.rewardLinhThach, rewardItems: t.rewardItems,
-      progress: getDailyGrindAwareProgress(t, prog, now), progressMax: t.progressMax,
+      progress: affinityState.affinityLocked ? 0 : getDailyGrindAwareProgress(t, prog, now), progressMax: t.progressMax,
       claimedAt: status === "available" ? null : (prog?.claimedAt?.toISOString() ?? null),
     };
   }));
@@ -65,6 +97,17 @@ router.post("/mission/:missionId/accept", requireAuth, async (req, res) => {
   const templates = await db.select().from(missionTemplatesTable)
     .where(eq(missionTemplatesTable.id, acceptMissionId)).limit(1);
   if (!templates.length) { res.status(404).json({ error: "Nhiệm vụ không tồn tại", code: "NOT_FOUND" }); return; }
+  const affinityState = await getMissionAffinityState(char.id, templates[0].npcName ?? null, templates[0].affinityRequired ?? 0);
+  if (affinityState.affinityLocked) {
+    res.status(403).json({
+      error: "Thân thiết với NPC chưa đủ để nhận nhiệm vụ này.",
+      code: "AFFINITY_REQUIRED",
+      affinityRequired: templates[0].affinityRequired ?? 0,
+      currentAffinity: affinityState.currentAffinity,
+      requiredRank: affinityState.requiredRank,
+    });
+    return;
+  }
 
   const existing = await db.select().from(missionProgressTable)
     .where(and(
@@ -104,6 +147,17 @@ router.post("/mission/:missionId/complete", requireAuth, async (req, res) => {
   if (!templates.length) { res.status(404).json({ error: "Nhiệm vụ không tồn tại", code: "NOT_FOUND" }); return; }
 
   const t = templates[0];
+  const affinityState = await getMissionAffinityState(char.id, t.npcName ?? null, t.affinityRequired ?? 0);
+  if (affinityState.affinityLocked) {
+    res.status(403).json({
+      error: "Thân thiết với NPC chưa đủ để hoàn thành nhiệm vụ này.",
+      code: "AFFINITY_REQUIRED",
+      affinityRequired: t.affinityRequired ?? 0,
+      currentAffinity: affinityState.currentAffinity,
+      requiredRank: affinityState.requiredRank,
+    });
+    return;
+  }
 
   try {
     const result = await db.transaction(async (tx) => {

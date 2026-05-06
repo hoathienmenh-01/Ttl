@@ -15,6 +15,12 @@ const ROLE_LABELS: Record<string, string> = {
   quest_giver: "Phát nhiệm vụ", tutorial_npc: "Hướng dẫn", rival_npc: "Đối thủ",
   lore_npc: "Lore bí ẩn", sect_npc: "Chấp Sự", board_npc: "Bảng nhiệm vụ",
 };
+const RANK_LABELS: Record<string, string> = {
+  xa_la: "Xa lạ",
+  quen_biet: "Quen biết",
+  than_thiet: "Thân thiết",
+  tri_ky: "Tri kỷ",
+};
 
 async function get(path: string) {
   const token = getToken();
@@ -51,8 +57,8 @@ function useCompleteMission() {
   return useMutation({ mutationFn: (id: string) => apiPost(`/mission/${id}/complete`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["missions"] }); qc.invalidateQueries({ queryKey: ["character"] }); } });
 }
 
-const STATUS_LABELS: Record<string, string> = { available: "Có thể nhận", accepted: "Đang làm", completed: "Hoàn thành", claimed: "Đã nhận thưởng" };
-const STATUS_COLORS: Record<string, string> = { available: "text-amber-500", accepted: "text-emerald-500", completed: "text-blue-400", claimed: "text-amber-900" };
+const STATUS_LABELS: Record<string, string> = { available: "Có thể nhận", accepted: "Đang làm", completed: "Hoàn thành", claimed: "Đã nhận thưởng", locked: "Chưa đủ thân thiết" };
+const STATUS_COLORS: Record<string, string> = { available: "text-amber-500", accepted: "text-emerald-500", completed: "text-blue-400", claimed: "text-amber-900", locked: "text-red-700" };
 
 function formatRemaining(target?: string | null, now = Date.now()): string {
   if (!target) return "";
@@ -103,6 +109,8 @@ export default function NpcPage() {
   const nextTalkAt = affinity?.nextTalkAt ?? null;
   const canTalk = affinity?.canTalk !== false || (nextTalkAt ? new Date(nextTalkAt).getTime() <= now : false);
   const talkRemaining = !canTalk ? formatRemaining(nextTalkAt, now) : "";
+  const affinityRank = affinity?.rank ?? "xa_la";
+  const rankDialogue = affinity?.dialogue || selectedNpc?.dialogue?.[`greet_${affinityRank}`] || selectedNpc?.dialogue?.greet;
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
@@ -157,6 +165,7 @@ export default function NpcPage() {
                 <div className="text-xs text-amber-800">
                   Thân thiện: <span className="text-amber-400 tabular-nums">{affinity?.affinity ?? 0}/100</span>
                 </div>
+                <span className="text-xs text-amber-600">{RANK_LABELS[affinityRank] ?? affinityRank}</span>
                 <button
                   onClick={() => handleTalk(selectedNpc.id)}
                   disabled={talk.isPending || !canTalk}
@@ -171,10 +180,10 @@ export default function NpcPage() {
             </div>
           </div>
 
-          {selectedNpc.dialogue && (
+          {rankDialogue && (
             <div className="mb-6 bg-[#120e08] border border-amber-900/20 rounded-sm p-4">
               <div className="text-amber-700 text-xs mb-2 tracking-wider">LỜI THOẠI</div>
-              <p className="text-amber-500 text-sm italic">"{selectedNpc.dialogue.greet}"</p>
+              <p className="text-amber-500 text-sm italic">"{rankDialogue}"</p>
             </div>
           )}
 
@@ -196,6 +205,11 @@ export default function NpcPage() {
                         </div>
                         <div className="text-amber-300 text-sm font-medium mb-1">{q.name}</div>
                         <div className="text-amber-800 text-xs mb-2">{q.description}</div>
+                        {q.affinityRequired > 0 && (
+                          <div className={`text-xs mb-2 ${q.affinityLocked ? "text-red-700" : "text-emerald-700"}`}>
+                            Yêu cầu thân thiết: {q.currentAffinity ?? 0}/{q.affinityRequired} · {RANK_LABELS[q.requiredRank] ?? q.requiredRank}
+                          </div>
+                        )}
                         <div className="flex gap-3 text-xs">
                           <span className="text-amber-700">+{q.rewardExp?.toLocaleString()} EXP</span>
                           <span className="text-amber-700">+{q.rewardLinhThach?.toLocaleString()} LS</span>

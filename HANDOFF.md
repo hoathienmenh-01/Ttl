@@ -892,3 +892,61 @@ cd artifacts/api-server && npx tsx src/seed.ts
 ### Next Recommended Tasks
 - Unlock NPC dialogue/quest flavor at affinity thresholds 20/50/80.
 - Consider adding a DB-level concurrency hardening pass for simultaneous duplicate talk requests if traffic grows.
+
+---
+
+## Session Update - 2026-05-06 23:35:43 +07:00
+
+### Task Done
+- Unlocked NPC dialogue and quest gating by affinity rank.
+
+### Files Read
+- `HANDOFF.md`
+- `lib/db/src/schema/missions.ts`
+- `lib/db/src/schema/npcs.ts`
+- `artifacts/api-server/src/lib/npcAffinity.ts`
+- `artifacts/api-server/src/routes/npc.ts`
+- `artifacts/api-server/src/routes/mission.ts`
+- `artifacts/api-server/src/seed.ts`
+- `artifacts/tu-tien-lo/src/pages/npc.tsx`
+- `scripts/src/smoke-test.ts`
+
+### Files Changed
+- `lib/db/src/schema/missions.ts`
+- `artifacts/api-server/src/lib/npcAffinity.ts`
+- `artifacts/api-server/src/routes/npc.ts`
+- `artifacts/api-server/src/routes/mission.ts`
+- `artifacts/api-server/src/seed.ts`
+- `artifacts/tu-tien-lo/src/pages/npc.tsx`
+- `scripts/src/smoke-test.ts`
+- `HANDOFF.md`
+
+### Logic New / Fixed
+- Added `mission_templates.affinity_required` with default `0`; existing quests remain ungated.
+- Added NPC affinity helpers for requirement checks, required rank mapping, and rank dialogue fallback.
+- `GET /npc/:npcId/affinity` now returns rank-specific dialogue.
+- `GET /npc/:npcId/quests` marks affinity-gated quests as `locked` with `affinityRequired`, `currentAffinity`, and `requiredRank`.
+- `/mission` list also marks gated quests locked, and mission accept/complete rejects insufficient affinity with `AFFINITY_REQUIRED`.
+- NPC page shows affinity rank, rank-specific dialogue, and quest affinity requirements.
+- Seed adds three small affinity-gated NPC quests at 20/50/80 and links them to Mộc Thanh Y, Hàn Dạ, and Tô Nguyệt Ly.
+
+### Commands Run
+- `git status --short --branch`
+- `git pull origin main`
+- `pnpm typecheck`
+- `pnpm --filter @workspace/scripts exec tsx src/smoke-test.ts`
+- `pnpm build`
+
+### Test / Build Result
+- PASS: `pnpm typecheck`
+- PASS: smoke test, `71 passed / 0 failed / 71 total`
+- PASS: `pnpm build`
+- Note: Vite chunk size warning remains known and non-blocking.
+
+### Known Risks
+- Existing DBs need Drizzle schema push before `affinity_required` exists.
+- Seed uses `onConflictDoNothing` for new gated quests, then updates questId links and rank dialogue JSON for the three affected NPCs on rerun.
+
+### Next Recommended Tasks
+- Add richer dialogue/quest rewards at higher affinity ranks.
+- Add migration/preflight documentation for applying `affinity_required` and NPC affinity tables in production.

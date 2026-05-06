@@ -5,6 +5,7 @@ import {
   achievementTemplatesTable, alchemyRecipesTable, battlePassSeasonsTable,
 } from "@workspace/db";
 import type { BattlePassTier } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -125,6 +126,9 @@ async function seed() {
     { id: "npc_to_nguyet_001", code: "N003", name: "Lore Ẩn — Ký Ức Hoa Thiên", description: "Tô Nguyệt Ly tìm thấy một mảnh cổ thư trong thư khố. Nàng nhờ ngươi dịch ký ức linh lực từ Hỏa Tinh Thạch.",                        type: "npc",   npcName: "Tô Nguyệt Ly",     realmRequired: "luyenkhi", progressMax: 1, objectiveType: "dungeon_clear", rewardExp: 1200, rewardLinhThach: 1500, rewardItems: ["hoa_thien_ling"], order: 1 },
     { id: "npc_moc_002",       code: "N004", name: "Luyện Đan Sư Thiên Tài",  description: "Mộc Thanh Y nghe tin về một bí pháp luyện đan thất truyền. Nàng nhờ ngươi thu thập nguyên liệu quý để thử nghiệm công thức mới.",          type: "npc",   npcName: "Mộc Thanh Y",       realmRequired: "trucco",   progressMax: 3, objectiveType: "alchemy_craft", rewardExp: 2000, rewardLinhThach: 2500, rewardItems: ["khai_tam_dan", "ngoc_boi_linh"], order: 2 },
     { id: "npc_han_da_002",    code: "N005", name: "Thiên Long Kiếm Ý",       description: "Hàn Dạ đã đạt ngộ Kiếm Ý từ trận chiến Lôi Nguyên Đỉnh. Hắn muốn ngươi cùng chinh phục bí cảnh đó để cùng tiến bộ.",                    type: "npc",   npcName: "Hàn Dạ",           realmRequired: "kimdan",   progressMax: 1, objectiveType: "dungeon_clear", rewardExp: 5000, rewardLinhThach: 3000, rewardItems: ["ngoc_than"], order: 2 },
+    { id: "npc_moc_aff_20",    code: "N006", name: "Lời Dặn Trong Vườn Dược", description: "Khi đã quen biết, Mộc Thanh Y tin ngươi đủ cẩn trọng để chăm sóc luống dược thảo non trong hậu sơn.", type: "npc", npcName: "Mộc Thanh Y", realmRequired: null, progressMax: 1, objectiveType: "cultivate", affinityRequired: 20, rewardExp: 250, rewardLinhThach: 250, rewardItems: ["linh_chi"], order: 3 },
+    { id: "npc_han_aff_50",    code: "N007", name: "Kiếm Luận Sau Hoàng Hôn", description: "Khi đã thân thiết, Hàn Dạ chịu hạ giọng và rủ ngươi luận kiếm thật sự thay vì chỉ khiêu khích.", type: "npc", npcName: "Hàn Dạ", realmRequired: "luyenkhi", progressMax: 1, objectiveType: "dungeon_clear", affinityRequired: 50, rewardExp: 900, rewardLinhThach: 700, rewardItems: ["kim_quang_dan"], order: 3 },
+    { id: "npc_to_aff_80",     code: "N008", name: "Bí Mật Dưới Trăng", description: "Khi đã là tri kỷ, Tô Nguyệt Ly tiết lộ đoạn ký ức bị phong ấn và nhờ ngươi xác nhận dấu vết Tịch Thiên.", type: "npc", npcName: "Tô Nguyệt Ly", realmRequired: "trucco", progressMax: 1, objectiveType: "boss_kill", affinityRequired: 80, rewardExp: 1800, rewardLinhThach: 1200, rewardItems: ["hoa_thien_ling"], order: 2 },
   ]).onConflictDoNothing();
 
   // ── NPCs ────────────────────────────────────────────────────────────────────
@@ -147,10 +151,13 @@ async function seed() {
       description: "Đại sư tỷ thân thiện, tinh thông Mộc hệ dược thuật và linh pháp chữa lành. Nàng là người đầu tiên hướng dẫn ngươi nhập môn, luôn ôn hòa và bao dung với đệ tử mới.",
       dialogue: {
         greet: "Chào sư đệ! Ta sẽ giúp ngươi làm quen với tông môn. Đừng ngại hỏi ta bất cứ điều gì.",
+        greet_quen_biet: "Sư đệ đến đúng lúc. Vườn dược hôm nay yên tĩnh, ta có thể chỉ ngươi vài mẹo dưỡng linh thảo.",
+        greet_than_thiet: "Ta đã để riêng một lô dược liệu tốt cho ngươi. Đừng khách khí, người trong môn nên giúp nhau.",
+        greet_tri_ky: "Có những dược phương ta chưa từng nói với ai. Nếu là ngươi, ta tin có thể cùng nghiên cứu.",
         quest: "Ta cần một ít Linh Thảo để bào chế thuốc chữa thương. Ngươi có thể giúp ta được không?",
         farewell: "Cẩn thận nhé, sư đệ. Mộc hệ linh khí sẽ luôn chữa lành vết thương cho ngươi.",
       },
-      questIds: ["phamnhan_main_02", "npc_moc_001", "luyenkhi_main_02", "npc_moc_002"],
+      questIds: ["phamnhan_main_02", "npc_moc_001", "luyenkhi_main_02", "npc_moc_002", "npc_moc_aff_20"],
       avatarCode: "MTY",
     },
     {
@@ -159,10 +166,13 @@ async function seed() {
       description: "Hàn Dạ — đệ tử nội môn kiêu ngạo, tài năng nhưng ưa tranh đấu. Hắn luôn thách thức ngươi để chứng tỏ bản thân, nhưng thực ra trong lòng hắn coi ngươi là đối thủ xứng đáng nhất.",
       dialogue: {
         greet: "Ngươi lại đến à. Thực lực ngươi có tăng lên không, hay vẫn chỉ là phàm nhân tầm thường?",
+        greet_quen_biet: "Ngươi cũng không tệ. Ít nhất ta không thấy nhàm chán khi ngươi xuất hiện.",
+        greet_than_thiet: "Được, hôm nay không khiêu khích. Ta muốn luận kiếm nghiêm túc với ngươi.",
+        greet_tri_ky: "Nếu có ngày ta thua, người đầu tiên ta muốn thấy đứng trước mặt mình chính là ngươi.",
         quest: "Ta thách ngươi! Ai hoàn thành trước thì người đó là thiên tài thực sự của Hoa Thiên Môn!",
         farewell: "Đừng để ta phải chờ lâu. Ta sẽ không giả vờ ngươi yếu nếu ngươi thua.",
       },
-      questIds: ["phamnhan_main_03", "npc_han_da_001", "luyenkhi_main_03", "kimdan_main_03", "npc_han_da_002"],
+      questIds: ["phamnhan_main_03", "npc_han_da_001", "luyenkhi_main_03", "kimdan_main_03", "npc_han_da_002", "npc_han_aff_50"],
       avatarCode: "HD",
     },
     {
@@ -171,10 +181,13 @@ async function seed() {
       description: "Cô gái bí ẩn với đôi mắt sâu thẳm như đáy biển. Tô Nguyệt Ly ít nói nhưng luôn nắm giữ những bí mật về lịch sử thượng cổ của Hoa Thiên Môn và sự kiện Đại Kiếp.",
       dialogue: {
         greet: "Ngươi cũng cảm nhận được không? Có điều gì đó đang thức dậy trong linh mạch này...",
+        greet_quen_biet: "Ngươi đã nghe được tiếng linh mạch rõ hơn trước. Có lẽ ta không phải người duy nhất cảm nhận điều đó.",
+        greet_than_thiet: "Ta đã chép lại vài đoạn cổ văn. Đọc cùng ta, nhưng đừng để Chấp Sự nhìn thấy.",
+        greet_tri_ky: "Đêm nay trăng sáng. Có một bí mật về Tịch Thiên Điện, ta chỉ dám nói với ngươi.",
         quest: "Ta tìm thấy một mảnh cổ thư đề cập đến Hoa Thiên Khai Đạo. Nhưng ta cần ngươi giúp xác nhận.",
         farewell: "Đừng tiết lộ điều này với ai. Tịch Thiên Điện luôn có mắt ở khắp nơi.",
       },
-      questIds: ["phamnhan_main_04", "npc_to_nguyet_001", "kimdan_main_02", "nguyenanh_main_02"],
+      questIds: ["phamnhan_main_04", "npc_to_nguyet_001", "kimdan_main_02", "nguyenanh_main_02", "npc_to_aff_80"],
       avatarCode: "TNL",
     },
     {
@@ -202,6 +215,40 @@ async function seed() {
       avatarCode: "BNV",
     },
   ]).onConflictDoNothing();
+
+  await db.update(npcsTable).set({
+    dialogue: {
+      greet: "Chào sư đệ! Ta sẽ giúp ngươi làm quen với tông môn. Đừng ngại hỏi ta bất cứ điều gì.",
+      greet_quen_biet: "Sư đệ đến đúng lúc. Vườn dược hôm nay yên tĩnh, ta có thể chỉ ngươi vài mẹo dưỡng linh thảo.",
+      greet_than_thiet: "Ta đã để riêng một lô dược liệu tốt cho ngươi. Đừng khách khí, người trong môn nên giúp nhau.",
+      greet_tri_ky: "Có những dược phương ta chưa từng nói với ai. Nếu là ngươi, ta tin có thể cùng nghiên cứu.",
+      quest: "Ta cần một ít Linh Thảo để bào chế thuốc chữa thương. Ngươi có thể giúp ta được không?",
+      farewell: "Cẩn thận nhé, sư đệ. Mộc hệ linh khí sẽ luôn chữa lành vết thương cho ngươi.",
+    },
+    questIds: ["phamnhan_main_02", "npc_moc_001", "luyenkhi_main_02", "npc_moc_002", "npc_moc_aff_20"],
+  }).where(eq(npcsTable.id, "moc_thanh_y"));
+  await db.update(npcsTable).set({
+    dialogue: {
+      greet: "Ngươi lại đến à. Thực lực ngươi có tăng lên không, hay vẫn chỉ là phàm nhân tầm thường?",
+      greet_quen_biet: "Ngươi cũng không tệ. Ít nhất ta không thấy nhàm chán khi ngươi xuất hiện.",
+      greet_than_thiet: "Được, hôm nay không khiêu khích. Ta muốn luận kiếm nghiêm túc với ngươi.",
+      greet_tri_ky: "Nếu có ngày ta thua, người đầu tiên ta muốn thấy đứng trước mặt mình chính là ngươi.",
+      quest: "Ta thách ngươi! Ai hoàn thành trước thì người đó là thiên tài thực sự của Hoa Thiên Môn!",
+      farewell: "Đừng để ta phải chờ lâu. Ta sẽ không giả vờ ngươi yếu nếu ngươi thua.",
+    },
+    questIds: ["phamnhan_main_03", "npc_han_da_001", "luyenkhi_main_03", "kimdan_main_03", "npc_han_da_002", "npc_han_aff_50"],
+  }).where(eq(npcsTable.id, "han_da"));
+  await db.update(npcsTable).set({
+    dialogue: {
+      greet: "Ngươi cũng cảm nhận được không? Có điều gì đó đang thức dậy trong linh mạch này...",
+      greet_quen_biet: "Ngươi đã nghe được tiếng linh mạch rõ hơn trước. Có lẽ ta không phải người duy nhất cảm nhận điều đó.",
+      greet_than_thiet: "Ta đã chép lại vài đoạn cổ văn. Đọc cùng ta, nhưng đừng để Chấp Sự nhìn thấy.",
+      greet_tri_ky: "Đêm nay trăng sáng. Có một bí mật về Tịch Thiên Điện, ta chỉ dám nói với ngươi.",
+      quest: "Ta tìm thấy một mảnh cổ thư đề cập đến Hoa Thiên Khai Đạo. Nhưng ta cần ngươi giúp xác nhận.",
+      farewell: "Đừng tiết lộ điều này với ai. Tịch Thiên Điện luôn có mắt ở khắp nơi.",
+    },
+    questIds: ["phamnhan_main_04", "npc_to_nguyet_001", "kimdan_main_02", "nguyenanh_main_02", "npc_to_aff_80"],
+  }).where(eq(npcsTable.id, "to_nguyet_ly"));
 
   // ── Sects ───────────────────────────────────────────────────────────────────
   await db.insert(sectsTable).values([

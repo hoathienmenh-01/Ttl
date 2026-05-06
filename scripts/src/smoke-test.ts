@@ -15,7 +15,10 @@ import {
 import {
   applyNpcTalkAffinity,
   getNpcAffinityRank,
+  getNpcAffinityRankForRequirement,
+  getNpcRankDialogue,
   getNpcTalkCooldownState,
+  isNpcAffinityRequirementMet,
   NPC_AFFINITY_MAX,
   NPC_AFFINITY_TALK_GAIN,
 } from "../../artifacts/api-server/src/lib/npcAffinity.js";
@@ -294,6 +297,11 @@ const previousWindowCooldown = getNpcTalkCooldownState(npcTalkBeforeReset, npcTa
 assert("NPC talk cùng reset window bị cooldown", sameWindowCooldown.canTalk === false);
 assert("NPC talk cooldown trả nextTalkAt", sameWindowCooldown.nextTalkAt?.getHours() === 4 && sameWindowCooldown.nextTalkAt?.getDate() === 7);
 assert("NPC talk trước reset 04:00 được nói lại", previousWindowCooldown.canTalk === true && previousWindowCooldown.nextTalkAt === null);
+assert("Affinity 19 chưa mở quest yêu cầu 20", !isNpcAffinityRequirementMet(19, 20));
+assert("Affinity 20 mở quest yêu cầu quen biết", isNpcAffinityRequirementMet(20, 20));
+assert("Yêu cầu 50 tương ứng thân thiết", getNpcAffinityRankForRequirement(50) === "than_thiet");
+assert("Dialogue ưu tiên theo rank", getNpcRankDialogue({ greet: "cũ", greet_than_thiet: "mới" }, "than_thiet") === "mới");
+assert("Dialogue fallback về greet", getNpcRankDialogue({ greet: "cũ" }, "tri_ky") === "cũ");
 
 // ── Summary ───────────────────────────────────────────────────────────────────
 console.log(`\n${"─".repeat(50)}`);

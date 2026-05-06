@@ -18,6 +18,7 @@ export const missionTemplatesTable = pgTable("mission_templates", {
   progressMax: integer("progress_max").notNull().default(1),
   objectiveType: text("objective_type"),
   availableStage: npcQuestStageEnum("available_stage").notNull().default("all"),
+  affinityRequired: integer("affinity_required").notNull().default(0),
   rewardExp: integer("reward_exp").notNull().default(0),
   rewardLinhThach: integer("reward_linh_thach").notNull().default(0),
   rewardItems: text("reward_items").array().notNull().default([]),
