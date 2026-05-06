@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUrl, apiPost, getToken } from "@/lib/api";
@@ -36,7 +36,10 @@ function useTalkNpc() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (npcId: string) => apiPost(`/npc/${npcId}/talk`),
-    onSuccess: (_data, npcId) => qc.invalidateQueries({ queryKey: ["npc-affinity", npcId] }),
+    onSuccess: (data, npcId) => {
+      qc.setQueryData(["npc-affinity", npcId], data);
+      qc.invalidateQueries({ queryKey: ["npc-affinity", npcId] });
+    },
   });
 }
 function useAcceptMission() {
@@ -51,14 +54,32 @@ function useCompleteMission() {
 const STATUS_LABELS: Record<string, string> = { available: "Có thể nhận", accepted: "Đang làm", completed: "Hoàn thành", claimed: "Đã nhận thưởng" };
 const STATUS_COLORS: Record<string, string> = { available: "text-amber-500", accepted: "text-emerald-500", completed: "text-blue-400", claimed: "text-amber-900" };
 
+function formatRemaining(target?: string | null, now = Date.now()): string {
+  if (!target) return "";
+  const ms = new Date(target).getTime() - now;
+  if (!Number.isFinite(ms) || ms <= 0) return "sẵn sàng";
+  const totalMinutes = Math.ceil(ms / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours <= 0) return `${minutes} phút`;
+  if (minutes === 0) return `${hours} giờ`;
+  return `${hours} giờ ${minutes} phút`;
+}
+
 export default function NpcPage() {
   const { data: npcs, isLoading } = useNpcs();
   const [selectedNpc, setSelectedNpc] = useState<any>(null);
+  const [now, setNow] = useState(() => Date.now());
   const { data: quests, isLoading: questsLoading } = useNpcQuests(selectedNpc?.id ?? "");
   const { data: affinity } = useNpcAffinity(selectedNpc?.id ?? "");
   const talk = useTalkNpc();
   const accept = useAcceptMission();
   const complete = useCompleteMission();
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(id);
+  }, []);
 
   async function handleAccept(id: string, name: string) {
     try { await accept.mutateAsync(id); toast.success(`Đã nhận nhiệm vụ: ${name}`); }
@@ -78,6 +99,10 @@ export default function NpcPage() {
   }
 
   if (isLoading) return <div className="p-8 text-amber-800 text-center animate-pulse">Đang triệu hồi NPC...</div>;
+
+  const nextTalkAt = affinity?.nextTalkAt ?? null;
+  const canTalk = affinity?.canTalk !== false || (nextTalkAt ? new Date(nextTalkAt).getTime() <= now : false);
+  const talkRemaining = !canTalk ? formatRemaining(nextTalkAt, now) : "";
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
@@ -134,11 +159,14 @@ export default function NpcPage() {
                 </div>
                 <button
                   onClick={() => handleTalk(selectedNpc.id)}
-                  disabled={talk.isPending}
+                  disabled={talk.isPending || !canTalk}
                   className="px-3 py-1.5 text-xs border border-amber-800/40 text-amber-600 hover:text-amber-400 rounded-sm transition-all disabled:opacity-50"
                 >
                   Trò chuyện
                 </button>
+                {!canTalk && (
+                  <span className="text-xs text-amber-800">Còn {talkRemaining}</span>
+                )}
               </div>
             </div>
           </div>

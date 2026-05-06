@@ -1,3 +1,5 @@
+import { getNextDailyResetAt, isSameDailyResetWindow } from "./dailyReset";
+
 export const NPC_AFFINITY_TALK_GAIN = 2;
 export const NPC_AFFINITY_MAX = 100;
 
@@ -10,4 +12,15 @@ export function getNpcAffinityRank(affinity: number): string {
   if (affinity >= 50) return "than_thiet";
   if (affinity >= 20) return "quen_biet";
   return "xa_la";
+}
+
+export function getNpcTalkCooldownState(lastTalkedAt: Date | null | undefined, now = new Date()): {
+  canTalk: boolean;
+  nextTalkAt: Date | null;
+} {
+  if (!lastTalkedAt || !isSameDailyResetWindow(lastTalkedAt, now)) {
+    return { canTalk: true, nextTalkAt: null };
+  }
+
+  return { canTalk: false, nextTalkAt: getNextDailyResetAt(now) };
 }

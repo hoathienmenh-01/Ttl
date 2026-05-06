@@ -15,6 +15,7 @@ import {
 import {
   applyNpcTalkAffinity,
   getNpcAffinityRank,
+  getNpcTalkCooldownState,
   NPC_AFFINITY_MAX,
   NPC_AFFINITY_TALK_GAIN,
 } from "../../artifacts/api-server/src/lib/npcAffinity.js";
@@ -285,6 +286,14 @@ assert("Affinity không vượt cap", applyNpcTalkAffinity(99) === NPC_AFFINITY_
 assert("Affinity âm được đưa về gain hợp lệ", applyNpcTalkAffinity(-10) === NPC_AFFINITY_TALK_GAIN);
 assert("Affinity 20 là quen biết", getNpcAffinityRank(20) === "quen_biet");
 assert("Affinity 80 là tri kỷ", getNpcAffinityRank(80) === "tri_ky");
+const npcTalkNow = new Date(2026, 4, 6, 10, 0, 0);
+const npcTalkSameWindow = new Date(2026, 4, 6, 4, 30, 0);
+const npcTalkBeforeReset = new Date(2026, 4, 6, 3, 30, 0);
+const sameWindowCooldown = getNpcTalkCooldownState(npcTalkSameWindow, npcTalkNow);
+const previousWindowCooldown = getNpcTalkCooldownState(npcTalkBeforeReset, npcTalkNow);
+assert("NPC talk cùng reset window bị cooldown", sameWindowCooldown.canTalk === false);
+assert("NPC talk cooldown trả nextTalkAt", sameWindowCooldown.nextTalkAt?.getHours() === 4 && sameWindowCooldown.nextTalkAt?.getDate() === 7);
+assert("NPC talk trước reset 04:00 được nói lại", previousWindowCooldown.canTalk === true && previousWindowCooldown.nextTalkAt === null);
 
 // ── Summary ───────────────────────────────────────────────────────────────────
 console.log(`\n${"─".repeat(50)}`);

@@ -840,3 +840,55 @@ cd artifacts/api-server && npx tsx src/seed.ts
 ### Next Recommended Tasks
 - Add NPC talk cooldown/daily limit.
 - Make achievement checking explicit or move newly-earned events to gameplay action responses.
+
+---
+
+## Session Update - 2026-05-06 23:24:13 +07:00
+
+### Task Done
+- Implemented NPC talk cooldown / daily talk limit.
+
+### Files Read
+- `HANDOFF.md`
+- `artifacts/api-server/src/routes/npc.ts`
+- `artifacts/api-server/src/lib/npcAffinity.ts`
+- `artifacts/api-server/src/lib/dailyReset.ts`
+- `lib/db/src/schema/npc_affinity.ts`
+- `artifacts/tu-tien-lo/src/pages/npc.tsx`
+- `scripts/src/smoke-test.ts`
+
+### Files Changed
+- `artifacts/api-server/src/lib/npcAffinity.ts`
+- `artifacts/api-server/src/routes/npc.ts`
+- `artifacts/tu-tien-lo/src/pages/npc.tsx`
+- `scripts/src/smoke-test.ts`
+- `HANDOFF.md`
+
+### Logic New / Fixed
+- Added `getNpcTalkCooldownState()` using the existing 04:00 daily reset window.
+- `GET /npc/:npcId/affinity` now returns `canTalk` and `nextTalkAt`.
+- `POST /npc/:npcId/talk` now rejects same-window repeat talk with HTTP 429 and code `TALK_COOLDOWN`, including `nextTalkAt`.
+- Successful talk response now returns `canTalk: false` and the next reset time.
+- NPC page disables `Trò chuyện` when server says cooldown is active and shows remaining time beside the button.
+- Frontend still only displays/calls APIs; affinity gain remains server-authoritative.
+
+### Commands Run
+- `git status --short --branch`
+- `git pull origin main`
+- `pnpm typecheck`
+- `pnpm --filter @workspace/scripts exec tsx src/smoke-test.ts`
+- `pnpm build`
+
+### Test / Build Result
+- PASS: `pnpm typecheck`
+- PASS: smoke test, `66 passed / 0 failed / 66 total`
+- PASS: `pnpm build`
+- Note: Vite still reports the known frontend chunk size warning; build exits successfully.
+
+### Known Risks
+- Cooldown enforcement is based on the existing `last_talked_at` column, so existing DBs still need the NPC affinity schema applied.
+- Current cooldown is one affinity gain per NPC per 04:00 reset window; no paid bypass or client-side reward logic was added.
+
+### Next Recommended Tasks
+- Unlock NPC dialogue/quest flavor at affinity thresholds 20/50/80.
+- Consider adding a DB-level concurrency hardening pass for simultaneous duplicate talk requests if traffic grows.

@@ -4,7 +4,7 @@ import { npcsTable, missionTemplatesTable, missionProgressTable, charactersTable
 import { eq, inArray, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { getDailyGrindAwareProgress, getDailyGrindAwareStatus } from "../lib/dailyMission";
-import { applyNpcTalkAffinity, getNpcAffinityRank } from "../lib/npcAffinity";
+import { applyNpcTalkAffinity, getNpcAffinityRank, getNpcTalkCooldownState } from "../lib/npcAffinity";
 
 const router = Router();
 
@@ -73,12 +73,15 @@ router.get("/npc/:npcId/affinity", requireAuth, async (req, res) => {
     .where(and(eq(characterNpcAffinityTable.charId, char.id), eq(characterNpcAffinityTable.npcId, npcId)))
     .limit(1);
   const affinity = rows[0]?.affinity ?? 0;
+  const cooldown = getNpcTalkCooldownState(rows[0]?.lastTalkedAt ?? null);
 
   res.json({
     npcId,
     affinity,
     rank: getNpcAffinityRank(affinity),
     lastTalkedAt: rows[0]?.lastTalkedAt?.toISOString() ?? null,
+    canTalk: cooldown.canTalk,
+    nextTalkAt: cooldown.nextTalkAt?.toISOString() ?? null,
   });
 });
 
@@ -98,7 +101,24 @@ router.post("/npc/:npcId/talk", requireAuth, async (req, res) => {
     .where(and(eq(characterNpcAffinityTable.charId, char.id), eq(characterNpcAffinityTable.npcId, npcId)))
     .limit(1);
   const existing = rows[0];
+  const cooldown = getNpcTalkCooldownState(existing?.lastTalkedAt ?? null, now);
+  if (!cooldown.canTalk) {
+    const affinity = existing?.affinity ?? 0;
+    res.status(429).json({
+      error: "Hôm nay đã trò chuyện với NPC này rồi.",
+      code: "TALK_COOLDOWN",
+      npcId,
+      affinity,
+      rank: getNpcAffinityRank(affinity),
+      affinityGained: 0,
+      lastTalkedAt: existing?.lastTalkedAt?.toISOString() ?? null,
+      canTalk: false,
+      nextTalkAt: cooldown.nextTalkAt?.toISOString() ?? null,
+    });
+    return;
+  }
   const newAffinity = applyNpcTalkAffinity(existing?.affinity ?? 0);
+  const nextTalkAt = getNpcTalkCooldownState(now, now).nextTalkAt;
 
   if (existing) {
     await db.update(characterNpcAffinityTable).set({
@@ -122,6 +142,8 @@ router.post("/npc/:npcId/talk", requireAuth, async (req, res) => {
     rank: getNpcAffinityRank(newAffinity),
     affinityGained: newAffinity - (existing?.affinity ?? 0),
     lastTalkedAt: now.toISOString(),
+    canTalk: false,
+    nextTalkAt: nextTalkAt?.toISOString() ?? null,
   });
 });
 
