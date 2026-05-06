@@ -110,6 +110,23 @@ export default function GameShell({ children, user }: Props) {
   })();
   const claimableAchievementCount = ((achievementData as any)?.achievements ?? [])
     .filter((achievement: any) => achievement.status === "earned").length;
+  const newlyEarnedAchievements: string[] = (achievementData as any)?.newlyEarned ?? [];
+
+  useEffect(() => {
+    if (!newlyEarnedAchievements.length) return;
+    const seenRaw = sessionStorage.getItem("tienlo_seen_achievement_toasts");
+    const seen = new Set(seenRaw ? JSON.parse(seenRaw) as string[] : []);
+    let changed = false;
+    for (const name of newlyEarnedAchievements) {
+      if (seen.has(name)) continue;
+      seen.add(name);
+      changed = true;
+      toast.success(`Thành tựu mới: ${name}!`);
+    }
+    if (changed) {
+      sessionStorage.setItem("tienlo_seen_achievement_toasts", JSON.stringify([...seen].slice(-50)));
+    }
+  }, [newlyEarnedAchievements.join("|")]);
 
   function isActive(path: string, exact?: boolean) {
     if (exact) return location === path;

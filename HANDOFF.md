@@ -679,3 +679,47 @@ cd artifacts/api-server && npx tsx src/seed.ts
 ### Next Recommended Tasks
 - Move daily reset constants into a shared package if more frontend surfaces need them.
 - Add NPC affinity MVP or achievement toast when `newlyEarned` is returned.
+
+---
+
+## Session Update - 2026-05-06 21:43:13 +07:00
+
+### Task Done
+- Added achievement toast notification when `/achievement` returns `newlyEarned`.
+
+### Files Read
+- `README.md`
+- `HANDOFF.md`
+- `replit.md`
+- `artifacts/api-server/src/routes/achievement.ts`
+- `artifacts/api-server/src/lib/achievements.ts`
+- `artifacts/tu-tien-lo/src/lib/hooks.ts`
+- `artifacts/tu-tien-lo/src/pages/achievement.tsx`
+- `artifacts/tu-tien-lo/src/components/GameShell.tsx`
+
+### Files Changed
+- `artifacts/tu-tien-lo/src/components/GameShell.tsx`
+- `HANDOFF.md`
+
+### Logic New / Fixed
+- Game shell now shows `Thành tựu mới: <name>!` toast for backend-reported newly earned achievements.
+- Toast dedupe uses `sessionStorage` and keeps the last 50 achievement names to prevent repeated notification spam in the same browser session.
+- Frontend still does not grant achievement rewards; reward claim remains server-authoritative via existing API.
+
+### Commands Run
+- `git fetch origin main`
+- `pnpm typecheck`
+- `pnpm --filter @workspace/scripts exec tsx src/smoke-test.ts`
+
+### Test / Build Result
+- PASS: `pnpm typecheck`
+- PASS: smoke test, `58 passed / 0 failed / 58 total`
+- PASS: `pnpm build` after the change.
+
+### Known Risks
+- Toast dedupe is session-scoped, so the same newly earned achievement could toast again in a new browser session if backend returns it again.
+- `/achievement` GET still has server-side side effects by auto-awarding newly met achievements.
+
+### Next Recommended Tasks
+- Consider making achievement check explicit or moving newly-earned events to action responses only.
+- Start NPC affinity MVP when a migration is acceptable.
