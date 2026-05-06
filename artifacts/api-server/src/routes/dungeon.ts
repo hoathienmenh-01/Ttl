@@ -20,6 +20,27 @@ import { resolveSkillCast } from "../lib/skillCombat";
 
 const router = Router();
 
+type FloorResult = {
+  floor: number;
+  name: string;
+  type: "normal" | "boss";
+  victory: boolean;
+  rounds: number;
+  monsterHpMax: number;
+  monsterAtk: number;
+  monsterDef: number;
+  hpRemaining: number;
+  expGained: number;
+  linhThachGained: number;
+  drops: string[];
+};
+
+type RewardSummary = {
+  exp: number;
+  linhThach: number;
+  drops: string[];
+};
+
 async function getChar(userId: string) {
   const rows = await db.select().from(charactersTable).where(eq(charactersTable.userId, userId)).limit(1);
   return rows[0] ?? null;
@@ -115,14 +136,16 @@ router.post("/dungeon/:dungeonId/enter", requireAuth, async (req, res) => {
   let combatRound = 0;
   let nextSkillRound = 1;
   const skillUsage = new Map<string, { id: string; name: string; casts: number; mpConsumed: number; cooldownRounds: number; log: string | null }>();
+  const floorResults: FloorResult[] = [];
+  let bossResult: FloorResult | null = null;
   let totalExpGained = 0;
   let totalLinhThach = 0;
   let victory = true;
 
   function fightStage(
     label: string, monHp: number, monAtk: number, monDef: number,
-    isBoss: boolean,
-  ): { survived: boolean; expBonus: number; lsBonus: number } {
+    isBoss: boolean, floor: number,
+  ): FloorResult {
     let currentMonHp = monHp;
     let round = 0;
     const maxRounds = isBoss ? 30 : 20;
@@ -168,20 +191,48 @@ router.post("/dungeon/:dungeonId/enter", requireAuth, async (req, res) => {
     }
     if (charHp <= 0) {
       logs.push(`Ngươi đã bại trận trước ${label}!`);
-      return { survived: false, expBonus: 0, lsBonus: 0 };
+      return {
+        floor,
+        name: label,
+        type: isBoss ? "boss" : "normal",
+        victory: false,
+        rounds: round,
+        monsterHpMax: monHp,
+        monsterAtk: monAtk,
+        monsterDef: monDef,
+        hpRemaining: 0,
+        expGained: 0,
+        linhThachGained: 0,
+        drops: [],
+      };
     }
+    const expBase = dungeon.expReward ?? 200;
+    const lsBase = dungeon.linhThachReward ?? 100;
     const expBonus = isBoss
-      ? Math.round((dungeon.expReward ?? 200) * 1.5)
-      : Math.round((dungeon.expReward ?? 200) * stages * 0.4);
+      ? Math.round(expBase * 0.65)
+      : Math.round(expBase * (0.18 + floor * 0.04));
     const lsBonus = isBoss
-      ? Math.round((dungeon.linhThachReward ?? 100) * 1.5)
-      : Math.round((dungeon.linhThachReward ?? 100) * stages * 0.3);
+      ? Math.round(lsBase * 0.45)
+      : Math.round(lsBase * (0.12 + floor * 0.03));
     logs.push(
       isBoss
         ? `★ Đã tiêu diệt ${label}! +${expBonus} EXP, +${lsBonus} Linh Thạch.`
         : `Tiêu diệt ${label}! +${expBonus} EXP`,
     );
-    return { survived: true, expBonus, lsBonus };
+    return {
+      floor,
+      name: label,
+      type: isBoss ? "boss" : "normal",
+      victory: true,
+      rounds: round,
+      monsterHpMax: monHp,
+      monsterAtk: monAtk,
+      monsterDef: monDef,
+      hpRemaining: charHp,
+      expGained: expBonus,
+      linhThachGained: lsBonus,
+      drops: [],
+    };
   }
 
   for (let s = 1; s <= stages; s++) {
@@ -189,10 +240,11 @@ router.post("/dungeon/:dungeonId/enter", requireAuth, async (req, res) => {
     const monAtk = Math.round((dungeon.monsterAtk ?? 50)  * (1 + (s - 1) * 0.2));
     const monDef = dungeon.monsterDef ?? 10;
     const label  = `Tầng ${s}: ${dungeon.monsterName}`;
-    const result = fightStage(label, monHp, monAtk, monDef, false);
-    if (!result.survived) { victory = false; break; }
-    totalExpGained += result.expBonus;
-    totalLinhThach += result.lsBonus;
+    const result = fightStage(label, monHp, monAtk, monDef, false, s);
+    floorResults.push(result);
+    if (!result.victory) { victory = false; break; }
+    totalExpGained += result.expGained;
+    totalLinhThach += result.linhThachGained;
   }
 
   // ── Final Boss Floor ───────────────────────────────────────────────────────
@@ -203,33 +255,49 @@ router.post("/dungeon/:dungeonId/enter", requireAuth, async (req, res) => {
     const bossDef = Math.round((dungeon.monsterDef ?? 10)  * 1.5);
     const bossName = `${dungeon.monsterName} Thủ Hộ`;
     logs.push(`\n⚔ Tầng Cuối — Thủ Hộ Giả xuất hiện!`);
-    const bossResult = fightStage(bossName, bossHp, bossAtk, bossDef, true);
-    if (!bossResult.survived) {
+    bossResult = fightStage(bossName, bossHp, bossAtk, bossDef, true, stages + 1);
+    if (!bossResult.victory) {
       victory = false;
     } else {
       bossDefeated = true;
-      totalExpGained += bossResult.expBonus;
-      totalLinhThach += bossResult.lsBonus;
+      totalExpGained += bossResult.expGained;
+      totalLinhThach += bossResult.linhThachGained;
     }
   }
 
   // ── Loot ──────────────────────────────────────────────────────────────────
   const drops: string[] = [];
   if (victory) {
-    totalExpGained += dungeon.expReward ?? 200;
-    totalLinhThach += dungeon.linhThachReward ?? 100;
+    const clearExp = Math.round((dungeon.expReward ?? 200) * 0.25);
+    const clearLinhThach = Math.round((dungeon.linhThachReward ?? 100) * 0.2);
+    totalExpGained += clearExp;
+    totalLinhThach += clearLinhThach;
     logs.push(`Hoàn thành bí cảnh! Tổng: +${totalExpGained} EXP, +${totalLinhThach} Linh Thạch.`);
     const dropItems = (dungeon.dropItems as string[]) ?? [];
+    const regularDropItems = dropItems.slice(0, Math.max(0, dropItems.length - 1));
+    const bossDropItems = bossDefeated ? dropItems.slice(-1) : [];
 
-    for (let i = 0; i < dropItems.length; i++) {
-      const itemId = dropItems[i];
-      const guaranteed = bossDefeated && i === 0;
-      if (guaranteed || Math.random() < 0.4) {
+    for (const itemId of regularDropItems) {
+      if (Math.random() < 0.25) {
         const tmpl = await db.select().from(itemTemplatesTable)
           .where(eq(itemTemplatesTable.id, itemId)).limit(1);
         if (tmpl.length) {
           drops.push(tmpl[0].name);
           await db.insert(inventoryItemsTable).values({ charId: char.id, templateId: itemId, qty: 1 });
+        }
+      }
+    }
+    for (let i = 0; i < bossDropItems.length; i++) {
+      const itemId = bossDropItems[i];
+      const guaranteed = i === 0;
+      if (guaranteed || Math.random() < 0.2) {
+        const tmpl = await db.select().from(itemTemplatesTable)
+          .where(eq(itemTemplatesTable.id, itemId)).limit(1);
+        if (tmpl.length) {
+          drops.push(tmpl[0].name);
+          if (bossResult) bossResult.drops.push(tmpl[0].name);
+          await db.insert(inventoryItemsTable).values({ charId: char.id, templateId: itemId, qty: 1 });
+          logs.push(`Boss cuối rơi: ${tmpl[0].name}.`);
         }
       }
     }
@@ -266,6 +334,13 @@ router.post("/dungeon/:dungeonId/enter", requireAuth, async (req, res) => {
     victory, logs, drops,
     expGained: totalExpGained,
     linhThachGained: totalLinhThach,
+    floorResults,
+    bossResult,
+    totalRewards: {
+      exp: totalExpGained,
+      linhThach: totalLinhThach,
+      drops,
+    } satisfies RewardSummary,
     hpRemaining: finalHp,
     mpRemaining: charMp,
     skillUsed: Array.from(skillUsage.values())[0] ?? null,

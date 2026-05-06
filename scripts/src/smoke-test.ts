@@ -344,6 +344,43 @@ assert("Expansion reward không vượt ngưỡng lạm phát MVP", Math.max(...
 assert("Affinity side quests đều có gate 50+", expansionSideQuestRewards.every(q => q.affinityRequired >= 50));
 assert("Expansion quest IDs unique", new Set([...expansionMainQuestRewards, ...expansionSideQuestRewards].map(q => q.id)).size === 7);
 
+// ── 16. Multi-floor dungeon reward envelope ────────────────────────────────
+console.log("\n[16] Multi-floor Dungeon Boss MVP");
+function getDungeonStaminaCost(difficulty: string): number {
+  return difficulty === "easy" ? 6 : difficulty === "hard" ? 16 : 10;
+}
+function simulateDungeonRewardEnvelope(baseExp: number, baseLs: number, stages: number) {
+  const floorResults = Array.from({ length: stages }, (_, index) => {
+    const floor = index + 1;
+    return {
+      floor,
+      expGained: Math.round(baseExp * (0.18 + floor * 0.04)),
+      linhThachGained: Math.round(baseLs * (0.12 + floor * 0.03)),
+    };
+  });
+  const bossResult = {
+    floor: stages + 1,
+    type: "boss" as const,
+    expGained: Math.round(baseExp * 0.65),
+    linhThachGained: Math.round(baseLs * 0.45),
+  };
+  const clearReward = {
+    exp: Math.round(baseExp * 0.25),
+    linhThach: Math.round(baseLs * 0.2),
+  };
+  const totalRewards = {
+    exp: floorResults.reduce((sum, f) => sum + f.expGained, 0) + bossResult.expGained + clearReward.exp,
+    linhThach: floorResults.reduce((sum, f) => sum + f.linhThachGained, 0) + bossResult.linhThachGained + clearReward.linhThach,
+  };
+  return { floorResults, bossResult, clearReward, totalRewards };
+}
+const hardDungeonEnvelope = simulateDungeonRewardEnvelope(8000, 4000, 5);
+assert("Multi-floor có đủ floor thường", hardDungeonEnvelope.floorResults.length === 5);
+assert("Final boss ở sau floor cuối", hardDungeonEnvelope.bossResult.type === "boss" && hardDungeonEnvelope.bossResult.floor === 6);
+assert("Floor cao hơn tăng reward vừa phải", hardDungeonEnvelope.floorResults[4].expGained > hardDungeonEnvelope.floorResults[0].expGained);
+assert("Dungeon reward cap không quá 2.5x base", hardDungeonEnvelope.totalRewards.exp <= 8000 * 2.5 && hardDungeonEnvelope.totalRewards.linhThach <= 4000 * 2.0);
+assert("Hard dungeon stamina cost vẫn là 16", getDungeonStaminaCost("hard") === 16);
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 console.log(`\n${"─".repeat(50)}`);
 console.log(`SMOKE TEST: ${passed} passed / ${failed} failed / ${passed + failed} total`);

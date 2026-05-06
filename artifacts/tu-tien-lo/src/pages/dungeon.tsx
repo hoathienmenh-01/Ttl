@@ -48,6 +48,17 @@ type CombatResult = {
   victory: boolean; logs: string[]; expGained: number; linhThachGained: number;
   hpRemaining: number; mpRemaining?: number; staminaRemaining: number; staminaCost: number;
   drops: string[]; elementMessage: string; message: string;
+  floorResults?: {
+    floor: number; name: string; type: "normal" | "boss"; victory: boolean; rounds: number;
+    monsterHpMax: number; monsterAtk: number; monsterDef: number; hpRemaining: number;
+    expGained: number; linhThachGained: number; drops?: string[];
+  }[];
+  bossResult?: {
+    floor: number; name: string; type: "boss"; victory: boolean; rounds: number;
+    monsterHpMax: number; monsterAtk: number; monsterDef: number; hpRemaining: number;
+    expGained: number; linhThachGained: number; drops?: string[];
+  } | null;
+  totalRewards?: { exp: number; linhThach: number; drops: string[] };
   skillUsed?: { id: string; name: string; mpConsumed?: number; mpCost?: number; cooldownRounds?: number; log?: string | null } | null;
   skillUsage?: { id: string; name: string; casts: number; mpConsumed: number; cooldownRounds: number; log?: string | null }[];
   newlyEarned?: string[]; completedMissions?: string[];
@@ -237,6 +248,39 @@ export default function DungeonPage() {
               </div>
             )}
 
+            {(result.floorResults?.length || result.bossResult) && (
+              <div className="mb-4">
+                <CardLabel>Tiến Trình Bí Cảnh</CardLabel>
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {result.floorResults?.map((f) => (
+                    <div key={`${f.type}-${f.floor}`} className={`rounded-sm border px-3 py-2 text-xs ${f.victory ? "border-emerald-900/30 bg-emerald-950/10" : "border-red-900/40 bg-red-950/10"}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={f.victory ? "text-emerald-300" : "text-red-300"}>{f.name}</span>
+                        <span className="text-amber-900">{f.rounds} lượt</span>
+                      </div>
+                      <div className="mt-1 text-amber-800">
+                        HP {f.monsterHpMax.toLocaleString()} · ATK {f.monsterAtk.toLocaleString()} · +{f.expGained.toLocaleString()} EXP · +{f.linhThachGained.toLocaleString()} LS
+                      </div>
+                    </div>
+                  ))}
+                  {result.bossResult && (
+                    <div className={`rounded-sm border px-3 py-2 text-xs ${result.bossResult.victory ? "border-amber-700/40 bg-amber-950/20" : "border-red-900/40 bg-red-950/10"}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={result.bossResult.victory ? "text-amber-300" : "text-red-300"}>Boss cuối: {result.bossResult.name}</span>
+                        <span className="text-amber-900">{result.bossResult.rounds} lượt</span>
+                      </div>
+                      <div className="mt-1 text-amber-800">
+                        HP {result.bossResult.monsterHpMax.toLocaleString()} · ATK {result.bossResult.monsterAtk.toLocaleString()} · +{result.bossResult.expGained.toLocaleString()} EXP · +{result.bossResult.linhThachGained.toLocaleString()} LS
+                      </div>
+                      {!!result.bossResult.drops?.length && (
+                        <div className="mt-1 text-emerald-400">Rơi: {result.bossResult.drops.join(", ")}</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Combat log */}
             <CardLabel>Nhật Ký Chiến Đấu</CardLabel>
             {(result.skillUsage?.length || result.skillUsed) && (
@@ -267,11 +311,11 @@ export default function DungeonPage() {
             <div className="border-t border-amber-900/20 pt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="text-center">
                 <div className="text-amber-900 text-xs mb-0.5">EXP nhận</div>
-                <div className="text-amber-400 font-bold tabular-nums">+{result.expGained.toLocaleString()}</div>
+                <div className="text-amber-400 font-bold tabular-nums">+{(result.totalRewards?.exp ?? result.expGained).toLocaleString()}</div>
               </div>
               <div className="text-center">
                 <div className="text-amber-900 text-xs mb-0.5">Linh Thạch</div>
-                <div className="text-amber-500 font-bold tabular-nums">+{result.linhThachGained.toLocaleString()}</div>
+                <div className="text-amber-500 font-bold tabular-nums">+{(result.totalRewards?.linhThach ?? result.linhThachGained).toLocaleString()}</div>
               </div>
               <div className="text-center">
                 <div className="text-amber-900 text-xs mb-0.5">Thể lực còn</div>
@@ -279,8 +323,8 @@ export default function DungeonPage() {
               </div>
               <div className="text-center">
                 <div className="text-amber-900 text-xs mb-0.5">Vật phẩm</div>
-                <div className={`font-bold text-sm ${result.drops?.length ? "text-emerald-400" : "text-amber-900"}`}>
-                  {result.drops?.length ? result.drops.join(", ") : "—"}
+                <div className={`font-bold text-sm ${(result.totalRewards?.drops ?? result.drops)?.length ? "text-emerald-400" : "text-amber-900"}`}>
+                  {(result.totalRewards?.drops ?? result.drops)?.length ? (result.totalRewards?.drops ?? result.drops).join(", ") : "—"}
                 </div>
               </div>
             </div>

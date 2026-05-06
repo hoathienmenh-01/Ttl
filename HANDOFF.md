@@ -1,9 +1,46 @@
 # HANDOFF — Tu Tiên Lộ: Hoa Thiên Khai Đạo
 
-## Current Status: CORE GAMEPLAY + QUEST/NPC/ACHIEVEMENT MVP POLISH + KIM ĐAN/NGUYÊN ANH CONTENT ✅
+## Current Status: CORE GAMEPLAY + QUEST/NPC/ACHIEVEMENT MVP POLISH + KIM ĐAN/NGUYÊN ANH CONTENT + MULTI-FLOOR DUNGEON ✅
 
 Ngày cập nhật: 2026-05-07
-Phiên AI: Content expansion — Kim Đan/Nguyên Anh quest + item/drop seed
+Phiên AI: Multi-floor dungeon boss MVP
+
+---
+
+## Session 2026-05-07 — Multi-floor Dungeon Boss MVP
+
+### Files Read / Audited
+- `README.md`
+- `HANDOFF.md`
+- `artifacts/api-server/src/routes/dungeon.ts`
+- `artifacts/tu-tien-lo/src/pages/dungeon.tsx`
+- `scripts/src/smoke-test.ts`
+- `lib/db/src/schema/skills.ts`
+
+### Changes Made
+- Kept dungeon combat server-authoritative and expanded the existing stage simulation into explicit response data:
+  - `floorResults` for normal floors.
+  - `bossResult` for the final guardian floor.
+  - `totalRewards` for server-calculated EXP, Linh Thạch, and drops.
+- Rebalanced dungeon floor rewards so higher floors reward more, boss rewards are separate, and total reward stays capped for MVP economy safety.
+- Split drop handling into normal-floor drop rolls and a final-boss drop roll using existing dungeon `dropItems`; no schema change required.
+- Updated Dungeon page to render server-returned floor progress, boss result, skill usage, and total rewards without client-side reward calculation.
+- Added smoke checks for multi-floor count, final boss placement, floor reward scaling, reward cap, and hard dungeon stamina cost.
+
+### Commands Run
+- `git status --short --branch` — pass, clean before changes.
+- `git pull origin main` — pass, already up to date.
+- `pnpm typecheck` — pass.
+- `pnpm --filter @workspace/scripts exec tsx src/smoke-test.ts` — pass, 82/82.
+- `pnpm build` — pass.
+
+### Risks / Notes
+- Boss floor drops reuse existing `dungeon_templates.drop_items`; no per-floor/per-boss drop table exists yet.
+- Floor combat still uses the existing random combat simulation, not deterministic seeded runs.
+- Boss mechanics are MVP stat scaling only; no unique boss skills/phases yet.
+
+### Next Recommended Task
+- Add richer dungeon floor modifiers and boss mechanics per dungeon while keeping drops/rewards server-authoritative and capped.
 
 ---
 
@@ -134,7 +171,7 @@ Phiên AI: Content expansion — Kim Đan/Nguyên Anh quest + item/drop seed
 - [x] Tu luyện nhập định (EXP tích lũy theo thời gian thực, server-authoritative)
 - [x] Đột phá cảnh giới (21 cảnh giới, server-authoritative)
 - [x] Boss thế giới với shared HP pool
-- [x] Bí cảnh 6 loại — server tính toàn bộ combat, ngũ hành modifier + final boss floor
+- [x] Bí cảnh 6 loại — server tính toàn bộ combat, ngũ hành modifier + multi-floor progress + final boss floor
 - [x] Pháp thuật 7 loại theo ngũ hành — học tốn Linh Thạch
 - [x] Quest: 27 nhiệm vụ (main/realm/sect/npc/grind), double-claim protected bằng server state/transaction guard
 - [x] Daily grind quest reset theo mốc 04:00 server local time
@@ -271,7 +308,7 @@ Phiên AI: Content expansion — Kim Đan/Nguyên Anh quest + item/drop seed
 | `artifacts/api-server/src/routes/battle-pass.ts` | GET /battle-pass + POST /battle-pass/claim/:tier |
 | `artifacts/api-server/src/routes/economy-log.ts` | GET /economy-log + GET /economy-log/admin |
 | `artifacts/api-server/src/routes/character.ts` | daily-reward với 7-day streak + economy log |
-| `artifacts/api-server/src/routes/dungeon.ts` | Dungeon combat + final boss + economy log |
+| `artifacts/api-server/src/routes/dungeon.ts` | Dungeon combat + multi-floor/final boss response + economy log |
 | `artifacts/api-server/src/routes/boss.ts` | Boss combat + economy log + pass XP |
 | `artifacts/api-server/src/routes/skill.ts` | Learn skill + active skill equip/unequip guard |
 | `artifacts/api-server/src/routes/mission.ts` | Mission complete + economy log + pass XP |
@@ -410,7 +447,7 @@ Ghi chú:
 ### P12 — Next Systems
 - [ ] Active skill panel nhỏ trên Dungeon/Boss trước khi vào combat
 - [ ] Pet / Companion MVP
-- [ ] Dungeon boss nhiều tầng hơn
+- [ ] Richer dungeon floor modifiers và boss mechanics theo từng bí cảnh
 - [ ] Guild war / sect war foundation
 
 ---
