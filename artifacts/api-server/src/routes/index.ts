@@ -19,6 +19,7 @@ import achievementRouter from "./achievement";
 import alchemyRouter from "./alchemy";
 import battlePassRouter from "./battle-pass";
 import economyLogRouter from "./economy-log";
+import petRouter from "./pet";
 
 const router: IRouter = Router();
 
@@ -42,5 +43,6 @@ router.use(achievementRouter);
 router.use(alchemyRouter);
 router.use(battlePassRouter);
 router.use(economyLogRouter);
+router.use(petRouter);
 
 export default router;

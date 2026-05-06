@@ -3,6 +3,7 @@ import {
   itemTemplatesTable, bossTemplatesTable, missionTemplatesTable, sectsTable, usersTable,
   npcsTable, skillTemplatesTable, dungeonTemplatesTable,
   achievementTemplatesTable, alchemyRecipesTable, battlePassSeasonsTable,
+  petTemplatesTable,
 } from "@workspace/db";
 import type { BattlePassTier } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -71,6 +72,14 @@ async function seed() {
     { id: "tho_thuan",         name: "Thổ Thuẫn",           element: "tho",  type: "defense", description: "Pháp thuật Thổ hệ. Khiên đất vững chắc, tăng phòng thủ.",          mpCost: 15, cooldownSeconds: 6,  damageMultiplier: 0.8, realmRequired: "phamnhan" },
     { id: "loi_bat",           name: "Lôi Bạt",             element: "loi",  type: "attack",  description: "Lôi hệ cấp trung. Sét đánh uy lực, gây sát thương diện rộng.",     mpCost: 35, cooldownSeconds: 6,  damageMultiplier: 1.8, realmRequired: "luyenkhi" },
     { id: "bang_phong",        name: "Băng Phong",           element: "bang", type: "attack",  description: "Băng hệ cấp trung. Phong ấn kẻ địch bằng lớp băng lạnh giá.",      mpCost: 30, cooldownSeconds: 5,  damageMultiplier: 1.6, realmRequired: "luyenkhi" },
+  ]).onConflictDoNothing();
+
+  // ── Pet / Companion Templates ───────────────────────────────────────────────
+  await db.insert(petTemplatesTable).values([
+    { id: "linh_ho_con", name: "Linh Hồ Con", description: "Tiểu hồ ly mới khai linh trí, nhanh nhẹn và biết quấy nhiễu địch thủ.", element: "moc", rarity: "pham", bonusStats: { atkPct: 0.03 }, procChance: 0.03, procDamagePct: 0.05, sortOrder: 1 },
+    { id: "thach_quy_nho", name: "Thạch Quy Nhỏ", description: "Rùa đá sinh trong linh mạch Thổ, chậm chạp nhưng giúp chủ nhân giữ vững phòng ngự.", element: "tho", rarity: "pham", bonusStats: { defPct: 0.04 }, procChance: 0.02, procDamagePct: 0.04, sortOrder: 2 },
+    { id: "hoa_tuoc_non", name: "Hỏa Tước Non", description: "Chim lửa non của Hỏa Nguyên Quan, đôi lúc phóng tia hỏa hỗ trợ trong giao chiến.", element: "hoa", rarity: "linh", bonusStats: { atkPct: 0.05 }, procChance: 0.05, procDamagePct: 0.08, sortOrder: 3 },
+    { id: "bach_linh_diep", name: "Bạch Linh Điệp", description: "Linh điệp trắng hấp thu nguyệt hoa, giúp chủ nhân né sát khí và ổn định linh tức.", element: "thuy", rarity: "linh", bonusStats: { atkPct: 0.02, defPct: 0.03 }, procChance: 0.04, procDamagePct: 0.06, sortOrder: 4 },
   ]).onConflictDoNothing();
 
   // ── Dungeon Templates ───────────────────────────────────────────────────────

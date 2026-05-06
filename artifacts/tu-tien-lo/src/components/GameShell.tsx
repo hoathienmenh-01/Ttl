@@ -36,6 +36,7 @@ const NAV_SECTIONS = [
       { path: "/",           label: "Tổng Quan",   icon: "◈", exact: true },
       { path: "/cultivation",label: "Cảnh Giới",   icon: "☯" },
       { path: "/skill",      label: "Pháp Thuật",  icon: "✺" },
+      { path: "/pet",        label: "Linh Thú",    icon: "◇" },
       { path: "/alchemy",    label: "Luyện Đan",   icon: "⊛" },
     ],
   },

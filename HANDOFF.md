@@ -1,9 +1,59 @@
 # HANDOFF — Tu Tiên Lộ: Hoa Thiên Khai Đạo
 
-## Current Status: CORE GAMEPLAY + QUEST/NPC/ACHIEVEMENT MVP POLISH + KIM ĐAN/NGUYÊN ANH CONTENT + MULTI-FLOOR DUNGEON ✅
+## Current Status: CORE GAMEPLAY + QUEST/NPC/ACHIEVEMENT MVP POLISH + KIM ĐAN/NGUYÊN ANH CONTENT + MULTI-FLOOR DUNGEON + PET MVP ✅
 
 Ngày cập nhật: 2026-05-07
-Phiên AI: Multi-floor dungeon boss MVP
+Phiên AI: Pet / Companion MVP
+
+---
+
+## Session 2026-05-07 — Pet / Companion MVP
+
+### Files Read / Audited
+- `README.md`
+- `HANDOFF.md`
+- `lib/db/src/schema/index.ts`
+- `lib/db/src/schema/skills.ts`
+- `artifacts/api-server/src/routes/skill.ts`
+- `artifacts/api-server/src/routes/dungeon.ts`
+- `artifacts/api-server/src/routes/boss.ts`
+- `artifacts/api-server/src/routes/index.ts`
+- `artifacts/api-server/src/seed.ts`
+- `artifacts/tu-tien-lo/src/App.tsx`
+- `artifacts/tu-tien-lo/src/components/GameShell.tsx`
+- `artifacts/tu-tien-lo/src/pages/skill.tsx`
+- `scripts/src/smoke-test.ts`
+
+### Changes Made
+- Added Pet/Companion schema:
+  - `pet_templates`
+  - `character_pets`
+- Added server-side pet combat helper `petCombat.ts` with small capped ATK/DEF/proc bonuses.
+- Added Pet API:
+  - `GET /pet/catalog`
+  - `GET /pet/mine`
+  - `POST /pet/:id/claim`
+  - `POST /pet/:id/equip`
+  - `POST /pet/:id/unequip`
+- Added 4 seed pet templates, all low/mid rarity and not monetized.
+- Integrated active pet bonus into Dungeon and Boss combat server-side; frontend only displays `petUsed`.
+- Added `/pet` frontend page and sidebar nav entry for viewing catalog, claiming owned pets, and selecting exactly one active pet.
+- Added smoke tests for pet equip guard, non-owned pet rejection, and bonus/proc caps.
+
+### Commands Run
+- `git status --short --branch` — pass, clean before changes.
+- `git pull origin main` — pass, already up to date.
+- `pnpm typecheck` — pass.
+- `pnpm --filter @workspace/scripts exec tsx src/smoke-test.ts` — pass, 87/87.
+- `pnpm build` — pass.
+
+### Risks / Notes
+- Existing production DB requires schema rollout for `pet_templates` and `character_pets` before pet routes work.
+- Pet acquisition is MVP free claim from catalog; no quest/event unlock gating yet.
+- No pet leveling/growth yet; combat bonus is static and capped.
+
+### Next Recommended Task
+- Add pet unlock sources through quest/event rewards and a small pet leveling path with capped growth.
 
 ---
 
@@ -129,7 +179,7 @@ Phiên AI: Multi-floor dungeon boss MVP
 
 ### Infrastructure
 - [x] pnpm monorepo: `artifacts/api-server` + `artifacts/tu-tien-lo` + `lib/db`
-- [x] PostgreSQL + Drizzle ORM (schema modules đã gồm achievements, economy, battle_pass, npc_affinity)
+- [x] PostgreSQL + Drizzle ORM (schema modules đã gồm achievements, economy, battle_pass, npc_affinity, pets)
 - [x] Express 5 API server, server-authoritative
 - [x] React + Vite + TypeScript frontend
 - [x] Tailwind CSS dark cultivation theme
@@ -179,6 +229,7 @@ Phiên AI: Multi-floor dungeon boss MVP
 - [x] NPC affinity MVP: bảng `character_npc_affinity`, API get/talk, cooldown 04:00, rank dialogue, quest gating 20/50/80
 - [x] Achievement MVP: catalog/check, claim reward server-side, page UI, sidebar claim badge, toast thành tựu mới
 - [x] Active/equipped skill slots MVP: 3 ô active, guard skill chưa học, combat ưu tiên active skill server-side
+- [x] Pet / Companion MVP: 4 pet templates, sở hữu/chọn 1 active pet, combat bonus/proc nhỏ tính server-side và có cap
 - [x] **Inventory / Equipment MVP hoàn chỉnh** (Session 9):
   - 6 slot trang bị: weapon, armor, hat, belt, boots, accessory — tất cả có item trong catalog
   - Catalog mở rộng: 39 items (vũ khí, giáp, mũ, đai, giày, phụ kiện, đan, thảo dược, quặng)
@@ -299,6 +350,7 @@ Phiên AI: Multi-floor dungeon boss MVP
 |------|---------|
 | `artifacts/api-server/src/lib/balance.ts` | ALL game constants |
 | `artifacts/api-server/src/lib/skillCombat.ts` | Learned skill combat resolver: MP cost, cooldown, affinity, damage cap |
+| `artifacts/api-server/src/lib/petCombat.ts` | Active pet combat bonus resolver with stat/proc caps |
 | `artifacts/api-server/src/lib/dailyReset.ts` | Shared 04:00 reset window helper for daily systems |
 | `artifacts/api-server/src/lib/dailyMission.ts` | Daily grind reset helpers used by mission/NPC quest APIs |
 | `artifacts/api-server/src/lib/npcAffinity.ts` | NPC affinity gain/cap/rank helper |
@@ -311,6 +363,7 @@ Phiên AI: Multi-floor dungeon boss MVP
 | `artifacts/api-server/src/routes/dungeon.ts` | Dungeon combat + multi-floor/final boss response + economy log |
 | `artifacts/api-server/src/routes/boss.ts` | Boss combat + economy log + pass XP |
 | `artifacts/api-server/src/routes/skill.ts` | Learn skill + active skill equip/unequip guard |
+| `artifacts/api-server/src/routes/pet.ts` | Pet catalog/mine/claim/equip/unequip APIs |
 | `artifacts/api-server/src/routes/mission.ts` | Mission complete + economy log + pass XP |
 | `artifacts/api-server/src/routes/npc.ts` | NPC dialogue/quest APIs + affinity get/talk APIs |
 | `artifacts/api-server/src/routes/achievement.ts` | Achievement list + server-side reward claim |
@@ -319,11 +372,13 @@ Phiên AI: Multi-floor dungeon boss MVP
 | `lib/db/src/schema/economy_logs.ts` | economyLogsTable |
 | `lib/db/src/schema/npc_affinity.ts` | `character_npc_affinity` unique `(char_id, npc_id)` table |
 | `lib/db/src/schema/skills.ts` | `character_skills.active_slot` for active skill MVP |
+| `lib/db/src/schema/pets.ts` | `pet_templates` + `character_pets` for companion MVP |
 | `lib/db/src/schema/missions.ts` | `mission_templates.affinity_required` for NPC gated quests |
 | `lib/db/src/schema/characters.ts` | loginStreak + loginStreakUpdatedAt columns |
 | `artifacts/tu-tien-lo/src/pages/battle-pass.tsx` | Battle Pass UI — tiers, XP bar, claim |
 | `artifacts/tu-tien-lo/src/pages/economy-log.tsx` | Lịch Sử Kinh Tế UI — transaction log |
 | `artifacts/tu-tien-lo/src/pages/achievement.tsx` | Achievement UI + claim states |
+| `artifacts/tu-tien-lo/src/pages/pet.tsx` | Pet catalog/owned/active companion UI |
 | `artifacts/tu-tien-lo/src/pages/npc.tsx` | NPC quest/dialogue UI + affinity panel |
 | `artifacts/tu-tien-lo/src/lib/hooks.ts` | useBattlePass, useClaimBattlePassTier, useEconomyLog |
 | `artifacts/tu-tien-lo/src/components/GameShell.tsx` | Nav: Battle Pass/Lịch Sử/Achievement + claim badge/toast shell behavior |
@@ -390,7 +445,7 @@ Phiên AI: Multi-floor dungeon boss MVP
 1. **Market listing** — cần có item trong inventory mới list được.
 2. **Chat** — refetch mỗi 5s, không phải WebSocket thật.
 3. **New player dungeon difficulty** — ATK=15 starter char struggles vs monHP=300. By design: equip items + skills first.
-4. **DB schema rollout** — DB thật cần chạy Drizzle schema push/preflight cho `active_slot`, `affinity_required`, `character_npc_affinity`, và unique mission progress.
+4. **DB schema rollout** — DB thật cần chạy Drizzle schema push/preflight cho `active_slot`, `affinity_required`, `character_npc_affinity`, `pet_templates`, `character_pets`, và unique mission progress.
 5. **Achievement GET side effect** — `GET /achievement` hiện có thể auto-award newly met achievements; nên tách explicit check/event flow sau.
 6. **Vite build warning** — frontend production build còn chunk size warning, chưa phải lỗi build.
 
@@ -402,6 +457,8 @@ Schema mới cần rollout trên DB thật:
 - `character_skills.active_slot`
 - `mission_templates.affinity_required`
 - `character_npc_affinity`
+- `pet_templates`
+- `character_pets`
 
 Checklist đề xuất:
 ```bash
@@ -415,7 +472,7 @@ pnpm build
 
 Ghi chú:
 - Chạy `push-force` chỉ sau khi kiểm tra schema diff và backup DB nếu là môi trường production.
-- Rerun seed để insert NPC affinity-gated quests, Kim Đan/Nguyên Anh mainline quests, reward/drop items, và refresh questIds/drop pools cho NPC/boss liên quan.
+- Rerun seed để insert NPC affinity-gated quests, Kim Đan/Nguyên Anh mainline quests, reward/drop items, pet templates, và refresh questIds/drop pools cho NPC/boss liên quan.
 
 ---
 
@@ -423,7 +480,7 @@ Ghi chú:
 
 ### P8 — DB Rollout / Production Preflight
 - [ ] Run production preflight checklist before deploying latest schema.
-- [ ] Confirm schema rollout includes `character_skills.active_slot`, `mission_templates.affinity_required`, `character_npc_affinity`.
+- [ ] Confirm schema rollout includes `character_skills.active_slot`, `mission_templates.affinity_required`, `character_npc_affinity`, `pet_templates`, `character_pets`.
 
 ### P9 — NPC affinity next steps
 - [x] NPC affinity tracking — `character_npc_affinity` table, `GET /npc/:id/affinity`, `POST /npc/:id/talk`
@@ -446,7 +503,8 @@ Ghi chú:
 
 ### P12 — Next Systems
 - [ ] Active skill panel nhỏ trên Dungeon/Boss trước khi vào combat
-- [ ] Pet / Companion MVP
+- [x] Pet / Companion MVP
+- [ ] Pet growth/leveling và nguồn unlock qua quest/event
 - [ ] Richer dungeon floor modifiers và boss mechanics theo từng bí cảnh
 - [ ] Guild war / sect war foundation
 
@@ -468,6 +526,7 @@ Ghi chú:
 |------|----------|------------|
 | Item templates | 39 | `cd artifacts/api-server && npx tsx src/seed.ts` |
 | Skill templates | 7 | (cùng seed) |
+| Pet templates | 4 | (cùng seed; free claim MVP, không monetized) |
 | Dungeon templates | 6 | (cùng seed) |
 | Boss templates | 5 | (cùng seed) |
 | Mission templates | 27 | (cùng seed; gồm 6 NPC affinity-gated quest) |

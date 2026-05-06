@@ -3,8 +3,9 @@ import { db } from "@workspace/db";
 import {
   dungeonTemplatesTable, charactersTable, inventoryItemsTable, itemTemplatesTable,
   characterSkillsTable, skillTemplatesTable,
+  characterPetsTable, petTemplatesTable,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { getRealmByKey } from "../lib/realms";
 import {
@@ -17,6 +18,7 @@ import { trackMissionProgress } from "../lib/missionProgress";
 import { logEconomy } from "../lib/economyLog";
 import { grantPassXp } from "../lib/grantPassXp";
 import { resolveSkillCast } from "../lib/skillCombat";
+import { resolvePetCombatBonus, rollPetProc } from "../lib/petCombat";
 
 const router = Router();
 
@@ -53,6 +55,16 @@ async function getCharSkills(charId: string) {
     .innerJoin(skillTemplatesTable, eq(characterSkillsTable.skillId, skillTemplatesTable.id))
     .where(eq(characterSkillsTable.charId, charId));
   return rows.map(r => ({ ...r.skill, activeSlot: r.activeSlot }));
+}
+
+async function getActivePet(charId: string) {
+  const rows = await db
+    .select({ cp: characterPetsTable, pet: petTemplatesTable })
+    .from(characterPetsTable)
+    .innerJoin(petTemplatesTable, eq(characterPetsTable.petId, petTemplatesTable.id))
+    .where(and(eq(characterPetsTable.charId, charId), eq(characterPetsTable.active, true)))
+    .limit(1);
+  return rows[0]?.pet ?? null;
 }
 
 router.get("/dungeon", async (req, res) => {
@@ -121,6 +133,8 @@ router.post("/dungeon/:dungeonId/enter", requireAuth, async (req, res) => {
 
   // ── Learned combat skills ─────────────────────────────────────────────────
   const skills = await getCharSkills(char.id);
+  const activePet = await getActivePet(char.id);
+  const petBonus = resolvePetCombatBonus(activePet);
   const attackSkillNames = skills
     .filter(s => s.type === "attack" && (s.damageMultiplier ?? 1) > 1)
     .map(s => s.name);
@@ -130,6 +144,7 @@ router.post("/dungeon/:dungeonId/enter", requireAuth, async (req, res) => {
   const logs: string[] = [`Vào bí cảnh: ${dungeon.name}. ${elementMsg}`];
   if (rootCombatMsg) logs.push(rootCombatMsg);
   if (attackSkillNames.length) logs.push(`Pháp thuật sẵn sàng: ${attackSkillNames.join(", ")}.`);
+  if (petBonus.log) logs.push(petBonus.log);
 
   let charHp = char.hp;
   let charMp = char.mp;
@@ -180,12 +195,18 @@ router.post("/dungeon/:dungeonId/enter", requireAuth, async (req, res) => {
         skillUsage.set(skillCast.skill.id, prev);
         if (skillCast.log) logs.push(skillCast.log);
       }
-      const effectiveAtk = Math.round(char.atk * rootCombatMod);
+      const effectiveAtk = Math.round(char.atk * rootCombatMod * petBonus.atkMultiplier);
+      const effectiveDef = Math.round(char.def * petBonus.defMultiplier);
       const baseDmg = Math.max(1, effectiveAtk - Math.floor(monDef * 0.3));
-      const playerDmg = Math.round(baseDmg * skillCast.damageMultiplier * elementMod * (0.85 + Math.random() * 0.3));
+      let playerDmg = Math.round(baseDmg * skillCast.damageMultiplier * elementMod * (0.85 + Math.random() * 0.3));
+      if (rollPetProc(petBonus)) {
+        const procDmg = Math.max(1, Math.round(baseDmg * petBonus.procDamagePct));
+        playerDmg += procDmg;
+        logs.push(`${petBonus.pet?.name} hỗ trợ thêm ${procDmg} sát thương.`);
+      }
       currentMonHp = Math.max(0, currentMonHp - playerDmg);
       if (currentMonHp > 0) {
-        const monDmg = Math.max(1, Math.round(monAtk * (0.8 + Math.random() * 0.4) - char.def * 0.4));
+        const monDmg = Math.max(1, Math.round(monAtk * (0.8 + Math.random() * 0.4) - effectiveDef * 0.4));
         charHp = Math.max(0, charHp - monDmg);
       }
     }
@@ -345,6 +366,15 @@ router.post("/dungeon/:dungeonId/enter", requireAuth, async (req, res) => {
     mpRemaining: charMp,
     skillUsed: Array.from(skillUsage.values())[0] ?? null,
     skillUsage: Array.from(skillUsage.values()),
+    petUsed: petBonus.pet ? {
+      id: petBonus.pet.id,
+      name: petBonus.pet.name,
+      atkPct: petBonus.atkPct,
+      defPct: petBonus.defPct,
+      procChance: petBonus.procChance,
+      procDamagePct: petBonus.procDamagePct,
+      log: petBonus.log,
+    } : null,
     staminaRemaining: finalStamina,
     staminaCost,
     elementMessage: elementMsg,

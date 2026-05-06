@@ -7,6 +7,13 @@
 import { REALMS, getRealmByKey, getNextRealm, getRealmName, computePower } from "../../artifacts/api-server/src/lib/realms.js";
 import { resolveSkillCast } from "../../artifacts/api-server/src/lib/skillCombat.js";
 import {
+  PET_ATK_BONUS_CAP,
+  PET_DEF_BONUS_CAP,
+  PET_PROC_CHANCE_CAP,
+  PET_PROC_DAMAGE_CAP,
+  resolvePetCombatBonus,
+} from "../../artifacts/api-server/src/lib/petCombat.js";
+import {
   DAILY_RESET_HOUR,
   getDailyResetStart,
   getNextDailyResetAt,
@@ -380,6 +387,27 @@ assert("Final boss ở sau floor cuối", hardDungeonEnvelope.bossResult.type ==
 assert("Floor cao hơn tăng reward vừa phải", hardDungeonEnvelope.floorResults[4].expGained > hardDungeonEnvelope.floorResults[0].expGained);
 assert("Dungeon reward cap không quá 2.5x base", hardDungeonEnvelope.totalRewards.exp <= 8000 * 2.5 && hardDungeonEnvelope.totalRewards.linhThach <= 4000 * 2.0);
 assert("Hard dungeon stamina cost vẫn là 16", getDungeonStaminaCost("hard") === 16);
+
+// ── 17. Pet / Companion MVP guard rails ────────────────────────────────────
+console.log("\n[17] Pet / Companion MVP");
+function canEquipPet(ownedPetIds: string[], petId: string): { ok: boolean; code?: string } {
+  if (!ownedPetIds.includes(petId)) return { ok: false, code: "PET_NOT_OWNED" };
+  return { ok: true };
+}
+const ownedPets = ["linh_ho_con"];
+const overTunedPet = {
+  id: "too_strong_pet",
+  name: "Test Pet",
+  bonusStats: { atkPct: 0.5, defPct: 0.5 },
+  procChance: 0.5,
+  procDamagePct: 0.5,
+};
+const cappedPetBonus = resolvePetCombatBonus(overTunedPet);
+assert("Pet đang sở hữu có thể equip", canEquipPet(ownedPets, "linh_ho_con").ok);
+assert("Không equip pet chưa sở hữu", !canEquipPet(ownedPets, "hoa_tuoc_non").ok && canEquipPet(ownedPets, "hoa_tuoc_non").code === "PET_NOT_OWNED");
+assert("Pet ATK bonus bị cap", cappedPetBonus.atkPct === PET_ATK_BONUS_CAP);
+assert("Pet DEF bonus bị cap", cappedPetBonus.defPct === PET_DEF_BONUS_CAP);
+assert("Pet proc bị cap", cappedPetBonus.procChance === PET_PROC_CHANCE_CAP && cappedPetBonus.procDamagePct === PET_PROC_DAMAGE_CAP);
 
 // ── Summary ───────────────────────────────────────────────────────────────────
 console.log(`\n${"─".repeat(50)}`);

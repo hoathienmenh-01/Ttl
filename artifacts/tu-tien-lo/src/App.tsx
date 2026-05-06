@@ -21,6 +21,7 @@ import AdminPage from "@/pages/admin";
 import OnlinePage from "@/pages/online";
 import NpcPage from "@/pages/npc";
 import SkillPage from "@/pages/skill";
+import PetPage from "@/pages/pet";
 import DungeonPage from "@/pages/dungeon";
 import AchievementPage from "@/pages/achievement";
 import AlchemyPage from "@/pages/alchemy";
@@ -93,6 +94,7 @@ function GameRouter({ user }: { user: any }) {
         <Route path="/mission" component={MissionPage} />
         <Route path="/npc" component={NpcPage} />
         <Route path="/skill" component={SkillPage} />
+        <Route path="/pet" component={PetPage} />
         <Route path="/dungeon" component={DungeonPage} />
         <Route path="/achievement" component={AchievementPage} />
         <Route path="/alchemy" component={AlchemyPage} />

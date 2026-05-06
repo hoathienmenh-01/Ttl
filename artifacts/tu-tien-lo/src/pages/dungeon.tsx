@@ -59,6 +59,7 @@ type CombatResult = {
     expGained: number; linhThachGained: number; drops?: string[];
   } | null;
   totalRewards?: { exp: number; linhThach: number; drops: string[] };
+  petUsed?: { id: string; name: string; atkPct: number; defPct: number; procChance: number; procDamagePct: number; log?: string | null } | null;
   skillUsed?: { id: string; name: string; mpConsumed?: number; mpCost?: number; cooldownRounds?: number; log?: string | null } | null;
   skillUsage?: { id: string; name: string; casts: number; mpConsumed: number; cooldownRounds: number; log?: string | null }[];
   newlyEarned?: string[]; completedMissions?: string[];
@@ -283,6 +284,13 @@ export default function DungeonPage() {
 
             {/* Combat log */}
             <CardLabel>Nhật Ký Chiến Đấu</CardLabel>
+            {result.petUsed && (
+              <div className="mt-2 mb-3 rounded-sm border border-emerald-900/30 bg-emerald-950/10 px-3 py-2 text-xs text-emerald-300">
+                <div className="font-medium text-emerald-200 mb-1">Linh thú đồng hành</div>
+                {result.petUsed.name} · ATK +{Math.round(result.petUsed.atkPct * 100)}% · DEF +{Math.round(result.petUsed.defPct * 100)}%
+                {result.petUsed.procChance > 0 && ` · Proc ${Math.round(result.petUsed.procChance * 100)}%`}
+              </div>
+            )}
             {(result.skillUsage?.length || result.skillUsed) && (
               <div className="mt-2 mb-3 rounded-sm border border-blue-900/30 bg-blue-950/10 px-3 py-2 text-xs text-blue-300">
                 <div className="font-medium text-blue-200 mb-1">Pháp thuật đã dùng</div>

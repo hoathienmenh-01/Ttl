@@ -17,6 +17,7 @@ interface CombatLog {
   bossKilled: boolean; drops: string[]; message?: string;
   playerDmg?: number; bossDmg?: number;
   skillUsed?: { id: string; name: string; mpCost?: number; mpConsumed?: number; cooldownRounds?: number; log?: string | null } | null;
+  petUsed?: { id: string; name: string; atkPct: number; defPct: number; procChance: number; procDamagePct: number; procDamage?: number; log?: string | null } | null;
   mpRemaining?: number;
 }
 
@@ -177,6 +178,16 @@ export default function BossPage() {
                   {combatLog.skillUsed.cooldownRounds ? ` · CD ${combatLog.skillUsed.cooldownRounds} lượt` : ""}
                 </div>
                 {typeof combatLog.mpRemaining === "number" && <div className="text-blue-500 mt-1">MP còn lại: {combatLog.mpRemaining}</div>}
+              </div>
+            )}
+            {combatLog.petUsed && (
+              <div className="mb-3 rounded-sm border border-emerald-900/30 bg-emerald-950/10 px-3 py-2 text-xs text-emerald-300">
+                <div className="font-medium text-emerald-200 mb-1">Linh thú đồng hành</div>
+                <div>
+                  {combatLog.petUsed.name} · ATK +{Math.round(combatLog.petUsed.atkPct * 100)}% · DEF +{Math.round(combatLog.petUsed.defPct * 100)}%
+                  {combatLog.petUsed.procChance > 0 ? ` · Proc ${Math.round(combatLog.petUsed.procChance * 100)}%` : ""}
+                </div>
+                {!!combatLog.petUsed.procDamage && <div className="text-emerald-500 mt-1">Hỗ trợ thêm {combatLog.petUsed.procDamage} sát thương.</div>}
               </div>
             )}
             <div className="flex-1 overflow-y-auto mb-4 space-y-0.5 pr-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-amber-950/20 [&::-webkit-scrollbar-thumb]:bg-amber-800/40">

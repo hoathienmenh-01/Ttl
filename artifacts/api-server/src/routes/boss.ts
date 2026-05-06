@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import {
   bossTemplatesTable, bossSpawnsTable, bossAttackLogsTable, charactersTable,
   inventoryItemsTable, itemTemplatesTable, characterSkillsTable, skillTemplatesTable,
+  characterPetsTable, petTemplatesTable,
 } from "@workspace/db";
 import { eq, isNull, and, gt } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
@@ -13,6 +14,7 @@ import { trackMissionProgress } from "../lib/missionProgress";
 import { logEconomy } from "../lib/economyLog";
 import { grantBattlePassXp } from "../lib/battlePassXp";
 import { resolveSkillCast } from "../lib/skillCombat";
+import { resolvePetCombatBonus, rollPetProc } from "../lib/petCombat";
 
 const router = Router();
 
@@ -28,6 +30,16 @@ async function getCharSkills(charId: string) {
     .innerJoin(skillTemplatesTable, eq(characterSkillsTable.skillId, skillTemplatesTable.id))
     .where(eq(characterSkillsTable.charId, charId));
   return rows.map(r => ({ ...r.skill, activeSlot: r.activeSlot }));
+}
+
+async function getActivePet(charId: string) {
+  const rows = await db
+    .select({ cp: characterPetsTable, pet: petTemplatesTable })
+    .from(characterPetsTable)
+    .innerJoin(petTemplatesTable, eq(characterPetsTable.petId, petTemplatesTable.id))
+    .where(and(eq(characterPetsTable.charId, charId), eq(characterPetsTable.active, true)))
+    .limit(1);
+  return rows[0]?.pet ?? null;
 }
 
 async function ensureBossSpawns() {
@@ -83,6 +95,8 @@ router.post("/boss/:bossId/attack", requireAuth, async (req, res) => {
   const isCrit = Math.random() < critChance;
   const rootCombatMod = ROOT_COMBAT_MULTIPLIER[char.spiritualRootGrade ?? "common"] ?? 1.0;
   const skills = await getCharSkills(char.id);
+  const activePet = await getActivePet(char.id);
+  const petBonus = resolvePetCombatBonus(activePet);
   const skillCast = resolveSkillCast({
     learnedSkills: skills,
     playerElement: char.primaryElement ?? "kim",
@@ -92,10 +106,14 @@ router.post("/boss/:bossId/attack", requireAuth, async (req, res) => {
     round: 1,
     nextAvailableRound: 1,
   });
-  const effectiveAtk = Math.round(char.atk * rootCombatMod);
+  const effectiveAtk = Math.round(char.atk * rootCombatMod * petBonus.atkMultiplier);
+  const effectiveDef = Math.round(char.def * petBonus.defMultiplier);
   const baseDmg = Math.max(1, effectiveAtk - Math.floor(template.def * 0.3));
-  const playerDmg = Math.round(baseDmg * skillCast.damageMultiplier * (isCrit ? 1.5 : 1) * (0.9 + Math.random() * 0.2));
-  const bossDmg = Math.max(1, Math.round(template.atk * (0.8 + Math.random() * 0.4) - char.def * 0.5));
+  let playerDmg = Math.round(baseDmg * skillCast.damageMultiplier * (isCrit ? 1.5 : 1) * (0.9 + Math.random() * 0.2));
+  const petProc = rollPetProc(petBonus);
+  const petProcDmg = petProc ? Math.max(1, Math.round(baseDmg * petBonus.procDamagePct)) : 0;
+  playerDmg += petProcDmg;
+  const bossDmg = Math.max(1, Math.round(template.atk * (0.8 + Math.random() * 0.4) - effectiveDef * 0.5));
 
   const newHp = Math.max(0, spawn.hpCurrent - playerDmg);
   const bossKilled = newHp === 0;
@@ -108,6 +126,8 @@ router.post("/boss/:bossId/attack", requireAuth, async (req, res) => {
   ];
 
   if (skillCast.log) logs.splice(rootBonusPct > 0 ? 2 : 1, 0, skillCast.log);
+  if (petBonus.log) logs.splice(rootBonusPct > 0 || skillCast.log ? 2 : 1, 0, petBonus.log);
+  if (petProcDmg > 0) logs.push(`${petBonus.pet?.name} hỗ trợ thêm ${petProcDmg} sát thương.`);
 
   if (!bossKilled) {
     logs.push(`${template.name} phản công gây ${bossDmg} sát thương!`);
@@ -171,6 +191,16 @@ router.post("/boss/:bossId/attack", requireAuth, async (req, res) => {
       mpConsumed: skillCast.mpCost,
       cooldownRounds: skillCast.cooldownRounds,
       log: skillCast.log,
+    } : null,
+    petUsed: petBonus.pet ? {
+      id: petBonus.pet.id,
+      name: petBonus.pet.name,
+      atkPct: petBonus.atkPct,
+      defPct: petBonus.defPct,
+      procChance: petBonus.procChance,
+      procDamagePct: petBonus.procDamagePct,
+      procDamage: petProcDmg,
+      log: petBonus.log,
     } : null,
     mpRemaining: Math.max(0, char.mp - skillCast.mpCost),
     expGained, linhThachGained, newlyEarned, completedMissions,

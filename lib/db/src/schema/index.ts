@@ -14,3 +14,4 @@ export * from "./achievements";
 export * from "./alchemy";
 export * from "./battle_pass";
 export * from "./economy_logs";
+export * from "./pets";
