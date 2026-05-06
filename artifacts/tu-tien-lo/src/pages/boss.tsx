@@ -18,6 +18,8 @@ interface CombatLog {
   playerDmg?: number; bossDmg?: number;
   skillUsed?: { id: string; name: string; mpCost?: number; mpConsumed?: number; cooldownRounds?: number; log?: string | null } | null;
   petUsed?: { id: string; name: string; atkPct: number; defPct: number; procChance: number; procDamagePct: number; procDamage?: number; log?: string | null } | null;
+  petProgress?: { petId: string; name: string; expGained: number; level: number; exp: number; leveledUp: boolean } | null;
+  petUnlocked?: { petId: string; name: string; source: string } | null;
   mpRemaining?: number;
 }
 
@@ -188,6 +190,12 @@ export default function BossPage() {
                   {combatLog.petUsed.procChance > 0 ? ` · Proc ${Math.round(combatLog.petUsed.procChance * 100)}%` : ""}
                 </div>
                 {!!combatLog.petUsed.procDamage && <div className="text-emerald-500 mt-1">Hỗ trợ thêm {combatLog.petUsed.procDamage} sát thương.</div>}
+                {combatLog.petProgress && (
+                  <div className="text-emerald-500 mt-1">
+                    +{combatLog.petProgress.expGained} EXP linh thú · Lv.{combatLog.petProgress.level}{combatLog.petProgress.leveledUp ? " tăng cấp" : ""}
+                  </div>
+                )}
+                {combatLog.petUnlocked && <div className="text-amber-400 mt-1">Mở khóa: {combatLog.petUnlocked.name}</div>}
               </div>
             )}
             <div className="flex-1 overflow-y-auto mb-4 space-y-0.5 pr-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-amber-950/20 [&::-webkit-scrollbar-thumb]:bg-amber-800/40">

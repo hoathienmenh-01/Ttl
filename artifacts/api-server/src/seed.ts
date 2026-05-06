@@ -76,11 +76,15 @@ async function seed() {
 
   // ── Pet / Companion Templates ───────────────────────────────────────────────
   await db.insert(petTemplatesTable).values([
-    { id: "linh_ho_con", name: "Linh Hồ Con", description: "Tiểu hồ ly mới khai linh trí, nhanh nhẹn và biết quấy nhiễu địch thủ.", element: "moc", rarity: "pham", bonusStats: { atkPct: 0.03 }, procChance: 0.03, procDamagePct: 0.05, sortOrder: 1 },
-    { id: "thach_quy_nho", name: "Thạch Quy Nhỏ", description: "Rùa đá sinh trong linh mạch Thổ, chậm chạp nhưng giúp chủ nhân giữ vững phòng ngự.", element: "tho", rarity: "pham", bonusStats: { defPct: 0.04 }, procChance: 0.02, procDamagePct: 0.04, sortOrder: 2 },
-    { id: "hoa_tuoc_non", name: "Hỏa Tước Non", description: "Chim lửa non của Hỏa Nguyên Quan, đôi lúc phóng tia hỏa hỗ trợ trong giao chiến.", element: "hoa", rarity: "linh", bonusStats: { atkPct: 0.05 }, procChance: 0.05, procDamagePct: 0.08, sortOrder: 3 },
-    { id: "bach_linh_diep", name: "Bạch Linh Điệp", description: "Linh điệp trắng hấp thu nguyệt hoa, giúp chủ nhân né sát khí và ổn định linh tức.", element: "thuy", rarity: "linh", bonusStats: { atkPct: 0.02, defPct: 0.03 }, procChance: 0.04, procDamagePct: 0.06, sortOrder: 4 },
+    { id: "linh_ho_con", name: "Linh Hồ Con", description: "Tiểu hồ ly mới khai linh trí, nhanh nhẹn và biết quấy nhiễu địch thủ.", element: "moc", rarity: "pham", unlockSource: "starter", unlockRef: null, bonusStats: { atkPct: 0.03 }, procChance: 0.03, procDamagePct: 0.05, sortOrder: 1 },
+    { id: "thach_quy_nho", name: "Thạch Quy Nhỏ", description: "Rùa đá sinh trong linh mạch Thổ, chậm chạp nhưng giúp chủ nhân giữ vững phòng ngự.", element: "tho", rarity: "pham", unlockSource: "mission", unlockRef: "phamnhan_main_03", bonusStats: { defPct: 0.04 }, procChance: 0.02, procDamagePct: 0.04, sortOrder: 2 },
+    { id: "hoa_tuoc_non", name: "Hỏa Tước Non", description: "Chim lửa non của Hỏa Nguyên Quan, đôi lúc phóng tia hỏa hỗ trợ trong giao chiến.", element: "hoa", rarity: "linh", unlockSource: "boss", unlockRef: "fire_serpent", bonusStats: { atkPct: 0.05 }, procChance: 0.05, procDamagePct: 0.08, sortOrder: 3 },
+    { id: "bach_linh_diep", name: "Bạch Linh Điệp", description: "Linh điệp trắng hấp thu nguyệt hoa, giúp chủ nhân né sát khí và ổn định linh tức.", element: "thuy", rarity: "linh", unlockSource: "event", unlockRef: "dungeon_clears_3", bonusStats: { atkPct: 0.02, defPct: 0.03 }, procChance: 0.04, procDamagePct: 0.06, sortOrder: 4 },
   ]).onConflictDoNothing();
+  await db.update(petTemplatesTable).set({ unlockSource: "starter", unlockRef: null }).where(eq(petTemplatesTable.id, "linh_ho_con"));
+  await db.update(petTemplatesTable).set({ unlockSource: "mission", unlockRef: "phamnhan_main_03" }).where(eq(petTemplatesTable.id, "thach_quy_nho"));
+  await db.update(petTemplatesTable).set({ unlockSource: "boss", unlockRef: "fire_serpent" }).where(eq(petTemplatesTable.id, "hoa_tuoc_non"));
+  await db.update(petTemplatesTable).set({ unlockSource: "event", unlockRef: "dungeon_clears_3" }).where(eq(petTemplatesTable.id, "bach_linh_diep"));
 
   // ── Dungeon Templates ───────────────────────────────────────────────────────
   await db.insert(dungeonTemplatesTable).values([

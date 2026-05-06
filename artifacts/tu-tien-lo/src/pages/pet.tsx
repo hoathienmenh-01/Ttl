@@ -56,6 +56,14 @@ function bonusText(pet: any) {
   return parts.length ? parts.join(" · ") : "Hỗ trợ tinh thần";
 }
 
+function unlockText(pet: any) {
+  if (pet.unlockSource === "starter") return "Mở khóa: nhập môn";
+  if (pet.unlockSource === "mission") return `Mở khóa: nhiệm vụ ${pet.unlockRef}`;
+  if (pet.unlockSource === "boss") return `Mở khóa: boss ${pet.unlockRef}`;
+  if (pet.unlockSource === "event") return pet.unlockRef === "dungeon_clears_3" ? "Mở khóa: hoàn thành 3 bí cảnh" : "Mở khóa: sự kiện";
+  return "Mở khóa qua gameplay";
+}
+
 export default function PetPage() {
   const { data: catalog, isLoading: catalogLoading } = usePetCatalog();
   const { data: mine, isLoading: mineLoading } = useMyPets();
@@ -108,6 +116,7 @@ export default function PetPage() {
           <div className="flex flex-wrap items-center gap-3">
             <div className="text-amber-300 font-medium">{activePet.name}</div>
             <QualityBadge quality={activePet.rarity} />
+            <div className="text-xs text-emerald-300">Lv.{activePet.level} {activePet.expRequired ? `· ${activePet.exp}/${activePet.expRequired} EXP` : "· MAX"}</div>
             <div className="text-xs text-amber-700">{bonusText(activePet)}</div>
             <Btn variant="ghost" className="ml-auto px-3 py-2" loading={unequip.isPending} onClick={() => handleUnequip(activePet.petId)}>
               Cho Nghỉ
@@ -149,10 +158,17 @@ export default function PetPage() {
                 <div className="text-xs text-blue-300 border border-blue-900/25 bg-blue-950/10 rounded-sm px-3 py-2 mb-3">
                   {bonusText(pet)}
                 </div>
+                <div className="text-xs text-amber-900 mb-3">
+                  {owned && minePet ? (
+                    <span>Lv.{minePet.level} {minePet.expRequired ? `· ${minePet.exp}/${minePet.expRequired} EXP` : "· MAX"}</span>
+                  ) : (
+                    <span>{unlockText(pet)}</span>
+                  )}
+                </div>
                 <div className="flex justify-end gap-2">
                   {!owned ? (
-                    <Btn className="px-3 py-2" loading={claim.isPending} onClick={() => handleClaim(pet)}>
-                      Kết Duyên
+                    <Btn className="px-3 py-2" loading={claim.isPending} disabled={!pet.canClaim} onClick={() => handleClaim(pet)}>
+                      {pet.canClaim ? "Kết Duyên" : "Chưa Mở"}
                     </Btn>
                   ) : active ? (
                     <Btn variant="ghost" className="px-3 py-2" loading={unequip.isPending} onClick={() => handleUnequip(pet.id)}>

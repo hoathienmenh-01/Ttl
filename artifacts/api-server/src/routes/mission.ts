@@ -12,6 +12,7 @@ import {
   isStaleDailyGrindClaim,
 } from "../lib/dailyMission";
 import { getNpcAffinityRankForRequirement, isNpcAffinityRequirementMet } from "../lib/npcAffinity";
+import { grantActivePetExp, unlockPetForCharacter } from "../lib/petProgress";
 
 const router = Router();
 
@@ -263,12 +264,20 @@ router.post("/mission/:missionId/complete", requireAuth, async (req, res) => {
       t.rewardLinhThach > 0 ? logEconomy({ charId: char.id, type: "linh_thach_gain", amount: t.rewardLinhThach, source: `mission:${t.code}`, balanceAfter: result.linhThachBalanceAfter, meta: { missionName: t.name } }) : Promise.resolve(),
       grantPassXp(char.id, 30),
     ]);
+    const [petProgress, petUnlocked] = await Promise.all([
+      grantActivePetExp(char.id, 12),
+      missionId === "phamnhan_main_03"
+        ? unlockPetForCharacter(char.id, "thach_quy_nho", `mission:${missionId}`)
+        : Promise.resolve(null),
+    ]);
 
     res.json({
       expGained: result.expGained,
       linhThachGained: result.linhThachGained,
       itemsGranted: result.itemsGranted,
       isDaily: t.type === "grind",
+      petProgress,
+      petUnlocked,
       message: `Hoàn thành ${t.name}! Nhận ${t.rewardExp} EXP và ${t.rewardLinhThach} Linh Thạch.`,
     });
   } catch (error) {

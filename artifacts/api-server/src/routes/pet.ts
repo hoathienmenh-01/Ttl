@@ -11,9 +11,15 @@ async function getChar(userId: string) {
   return rows[0] ?? null;
 }
 
-router.get("/pet/catalog", async (_req, res) => {
+router.get("/pet/catalog", requireAuth, async (req, res) => {
+  const user = (req as any).user;
+  const char = await getChar(user.id);
+  if (!char) { res.status(404).json({ error: "Chưa tạo nhân vật", code: "NO_CHARACTER" }); return; }
   const pets = await db.select().from(petTemplatesTable);
-  res.json(pets.sort((a, b) => a.sortOrder - b.sortOrder));
+  res.json(pets.sort((a, b) => a.sortOrder - b.sortOrder).map(pet => ({
+    ...pet,
+    canClaim: pet.unlockSource === "starter" || (pet.unlockSource === "event" && (pet.unlockRef !== "dungeon_clears_3" || char.dungeonClears >= 3)),
+  })));
 });
 
 router.get("/pet/mine", requireAuth, async (req, res) => {
@@ -37,7 +43,11 @@ router.get("/pet/mine", requireAuth, async (req, res) => {
     bonusStats: pet.bonusStats ?? {},
     procChance: pet.procChance,
     procDamagePct: pet.procDamagePct,
+    unlockSource: pet.unlockSource,
+    unlockRef: pet.unlockRef,
     level: cp.level,
+    exp: cp.exp,
+    expRequired: cp.level >= 5 ? 0 : 100,
     active: cp.active,
     acquiredAt: cp.acquiredAt,
   })));
@@ -51,14 +61,27 @@ router.post("/pet/:petId/claim", requireAuth, async (req, res) => {
   const petId = String(req.params.petId);
   const pets = await db.select().from(petTemplatesTable).where(eq(petTemplatesTable.id, petId)).limit(1);
   if (!pets.length) { res.status(404).json({ error: "Linh thú không tồn tại", code: "PET_NOT_FOUND" }); return; }
+  const pet = pets[0];
+
+  const eventUnlocked = pet.unlockSource === "event"
+    && (pet.unlockRef !== "dungeon_clears_3" || char.dungeonClears >= 3);
+  if (pet.unlockSource !== "starter" && !eventUnlocked) {
+    res.status(403).json({
+      error: "Linh thú này cần mở khóa qua nhiệm vụ, boss hoặc sự kiện.",
+      code: "PET_LOCKED",
+      unlockSource: pet.unlockSource,
+      unlockRef: pet.unlockRef,
+    });
+    return;
+  }
 
   const existing = await db.select().from(characterPetsTable)
     .where(and(eq(characterPetsTable.charId, char.id), eq(characterPetsTable.petId, petId)))
     .limit(1);
   if (existing.length) { res.status(400).json({ error: "Đã sở hữu linh thú này", code: "PET_ALREADY_OWNED" }); return; }
 
-  await db.insert(characterPetsTable).values({ charId: char.id, petId, level: 1, active: false });
-  res.json({ message: `Đã kết duyên với ${pets[0].name}.`, petId });
+  await db.insert(characterPetsTable).values({ charId: char.id, petId, level: 1, exp: 0, active: false });
+  res.json({ message: `Đã kết duyên với ${pet.name}.`, petId });
 });
 
 router.post("/pet/:petId/equip", requireAuth, async (req, res) => {

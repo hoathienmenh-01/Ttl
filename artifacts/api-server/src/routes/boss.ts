@@ -15,6 +15,7 @@ import { logEconomy } from "../lib/economyLog";
 import { grantBattlePassXp } from "../lib/battlePassXp";
 import { resolveSkillCast } from "../lib/skillCombat";
 import { resolvePetCombatBonus, rollPetProc } from "../lib/petCombat";
+import { grantActivePetExp, unlockPetForCharacter } from "../lib/petProgress";
 
 const router = Router();
 
@@ -39,7 +40,8 @@ async function getActivePet(charId: string) {
     .innerJoin(petTemplatesTable, eq(characterPetsTable.petId, petTemplatesTable.id))
     .where(and(eq(characterPetsTable.charId, charId), eq(characterPetsTable.active, true)))
     .limit(1);
-  return rows[0]?.pet ?? null;
+  if (!rows.length) return null;
+  return { ...rows[0].pet, level: rows[0].cp.level };
 }
 
 async function ensureBossSpawns() {
@@ -174,6 +176,10 @@ router.post("/boss/:bossId/attack", requireAuth, async (req, res) => {
       grantBattlePassXp(char.id, 20),
     ]);
   }
+  const petProgress = await grantActivePetExp(char.id, bossKilled ? 25 : 8);
+  const petUnlocked = bossKilled && template.id === "fire_serpent"
+    ? await unlockPetForCharacter(char.id, "hoa_tuoc_non", `boss:${template.id}`)
+    : null;
 
   const [newlyEarned, completedMissions] = bossKilled
     ? await Promise.all([
@@ -202,6 +208,8 @@ router.post("/boss/:bossId/attack", requireAuth, async (req, res) => {
       procDamage: petProcDmg,
       log: petBonus.log,
     } : null,
+    petProgress,
+    petUnlocked,
     mpRemaining: Math.max(0, char.mp - skillCast.mpCost),
     expGained, linhThachGained, newlyEarned, completedMissions,
     message: bossKilled ? `Đã hạ ${template.name}! Nhận ${expGained} EXP và ${linhThachGained} Linh Thạch.`

@@ -1,9 +1,60 @@
 # HANDOFF — Tu Tiên Lộ: Hoa Thiên Khai Đạo
 
-## Current Status: CORE GAMEPLAY + QUEST/NPC/ACHIEVEMENT MVP POLISH + KIM ĐAN/NGUYÊN ANH CONTENT + MULTI-FLOOR DUNGEON + PET MVP + HIGH-TIER ALCHEMY ✅
+## Current Status: CORE GAMEPLAY + QUEST/NPC/ACHIEVEMENT MVP POLISH + KIM ĐAN/NGUYÊN ANH CONTENT + MULTI-FLOOR DUNGEON + PET LEVELING + HIGH-TIER ALCHEMY ✅
 
 Ngày cập nhật: 2026-05-07
-Phiên AI: Higher-tier alchemy recipes
+Phiên AI: Pet unlock sources + capped leveling MVP
+
+---
+
+## Session 2026-05-07 — Pet Unlock Sources + Capped Leveling MVP
+
+### Files Read / Audited
+- `README.md`
+- `HANDOFF.md`
+- `lib/db/src/schema/pets.ts`
+- `artifacts/api-server/src/lib/petCombat.ts`
+- `artifacts/api-server/src/lib/petProgress.ts`
+- `artifacts/api-server/src/routes/pet.ts`
+- `artifacts/api-server/src/routes/dungeon.ts`
+- `artifacts/api-server/src/routes/boss.ts`
+- `artifacts/api-server/src/routes/mission.ts`
+- `artifacts/api-server/src/seed.ts`
+- `artifacts/tu-tien-lo/src/pages/pet.tsx`
+- `artifacts/tu-tien-lo/src/pages/dungeon.tsx`
+- `artifacts/tu-tien-lo/src/pages/boss.tsx`
+- `scripts/src/smoke-test.ts`
+
+### Changes Made
+- Added pet unlock metadata:
+  - `pet_templates.unlock_source`
+  - `pet_templates.unlock_ref`
+  - `character_pets.exp`
+- Updated pet seed so only `Linh Hồ Con` is starter-claimable; other pets unlock from mission, boss, or event condition:
+  - `Thạch Quy Nhỏ`: mission `phamnhan_main_03`
+  - `Hỏa Tước Non`: boss `fire_serpent`
+  - `Bạch Linh Điệp`: event `dungeon_clears_3`
+- Added `petProgress.ts` for server-side active pet EXP, level cap, unlock grants, and capped exp gain.
+- Active pet gains small capped EXP from dungeon victory, boss attack/kill, and mission completion.
+- Pet combat bonus now scales very lightly by level but still obeys hard caps.
+- Pet page now shows unlock source, level, exp, and disables locked pets.
+- Dungeon/Boss result panels show pet EXP progress and boss pet unlocks.
+- Smoke tests now cover non-owned equip rejection, pet EXP cap, level-up, level cap, and combat bonus hard cap.
+
+### Commands Run
+- `git status --short --branch` — pass, clean before changes.
+- `git pull origin main` — pass, already up to date.
+- `pnpm typecheck` — pass.
+- `pnpm --filter @workspace/scripts exec tsx src/smoke-test.ts` — pass, 96/96.
+- `pnpm build` — pass.
+
+### Risks / Notes
+- Production DB needs schema rollout for pet unlock/exp columns before deploying this commit.
+- Mission/boss unlock grants are best-effort after the main reward transaction; existing owned pets are not duplicated.
+- Pet leveling is static level 1-5 only; no pet skills or evolution yet.
+
+### Next Recommended Task
+- Add richer pet unlock surfacing in mission/boss reward previews and optional pet skill flavor logs, while keeping combat caps unchanged.
 
 ---
 
@@ -267,7 +318,7 @@ Phiên AI: Higher-tier alchemy recipes
 - [x] NPC affinity MVP: bảng `character_npc_affinity`, API get/talk, cooldown 04:00, rank dialogue, quest gating 20/50/80
 - [x] Achievement MVP: catalog/check, claim reward server-side, page UI, sidebar claim badge, toast thành tựu mới
 - [x] Active/equipped skill slots MVP: 3 ô active, guard skill chưa học, combat ưu tiên active skill server-side
-- [x] Pet / Companion MVP: 4 pet templates, sở hữu/chọn 1 active pet, combat bonus/proc nhỏ tính server-side và có cap
+- [x] Pet / Companion MVP: 4 pet templates, unlock qua gameplay, sở hữu/chọn 1 active pet, level/EXP cap, combat bonus/proc nhỏ tính server-side và có cap
 - [x] **Inventory / Equipment MVP hoàn chỉnh** (Session 9):
   - 6 slot trang bị: weapon, armor, hat, belt, boots, accessory — tất cả có item trong catalog
   - Catalog mở rộng: 39 items (vũ khí, giáp, mũ, đai, giày, phụ kiện, đan, thảo dược, quặng)
@@ -483,7 +534,7 @@ Phiên AI: Higher-tier alchemy recipes
 1. **Market listing** — cần có item trong inventory mới list được.
 2. **Chat** — refetch mỗi 5s, không phải WebSocket thật.
 3. **New player dungeon difficulty** — ATK=15 starter char struggles vs monHP=300. By design: equip items + skills first.
-4. **DB schema rollout** — DB thật cần chạy Drizzle schema push/preflight cho `active_slot`, `affinity_required`, `character_npc_affinity`, `pet_templates`, `character_pets`, và unique mission progress.
+4. **DB schema rollout** — DB thật cần chạy Drizzle schema push/preflight cho `active_slot`, `affinity_required`, `character_npc_affinity`, `pet_templates`, `pet_templates.unlock_source`, `pet_templates.unlock_ref`, `character_pets`, `character_pets.exp`, và unique mission progress.
 5. **Achievement GET side effect** — `GET /achievement` hiện có thể auto-award newly met achievements; nên tách explicit check/event flow sau.
 6. **Vite build warning** — frontend production build còn chunk size warning, chưa phải lỗi build.
 
@@ -497,6 +548,9 @@ Schema mới cần rollout trên DB thật:
 - `character_npc_affinity`
 - `pet_templates`
 - `character_pets`
+- `pet_templates.unlock_source`
+- `pet_templates.unlock_ref`
+- `character_pets.exp`
 
 Checklist đề xuất:
 ```bash
@@ -543,7 +597,8 @@ Ghi chú:
 ### P12 — Next Systems
 - [ ] Active skill panel nhỏ trên Dungeon/Boss trước khi vào combat
 - [x] Pet / Companion MVP
-- [ ] Pet growth/leveling và nguồn unlock qua quest/event
+- [x] Pet growth/leveling và nguồn unlock qua quest/event
+- [ ] Pet skill flavor/proc log nâng cao và reward preview rõ hơn
 - [ ] Richer dungeon floor modifiers và boss mechanics theo từng bí cảnh
 - [ ] Guild war / sect war foundation
 
@@ -565,7 +620,7 @@ Ghi chú:
 |------|----------|------------|
 | Item templates | 39 | `cd artifacts/api-server && npx tsx src/seed.ts` |
 | Skill templates | 7 | (cùng seed) |
-| Pet templates | 4 | (cùng seed; free claim MVP, không monetized) |
+| Pet templates | 4 | (cùng seed; starter/mission/boss/event unlock, không monetized) |
 | Alchemy recipes | 11 | (cùng seed; gồm Kim Đan/Nguyên Anh cao cấp) |
 | Dungeon templates | 6 | (cùng seed) |
 | Boss templates | 5 | (cùng seed) |

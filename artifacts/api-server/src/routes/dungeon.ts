@@ -19,6 +19,7 @@ import { logEconomy } from "../lib/economyLog";
 import { grantPassXp } from "../lib/grantPassXp";
 import { resolveSkillCast } from "../lib/skillCombat";
 import { resolvePetCombatBonus, rollPetProc } from "../lib/petCombat";
+import { grantActivePetExp } from "../lib/petProgress";
 
 const router = Router();
 
@@ -64,7 +65,8 @@ async function getActivePet(charId: string) {
     .innerJoin(petTemplatesTable, eq(characterPetsTable.petId, petTemplatesTable.id))
     .where(and(eq(characterPetsTable.charId, charId), eq(characterPetsTable.active, true)))
     .limit(1);
-  return rows[0]?.pet ?? null;
+  if (!rows.length) return null;
+  return { ...rows[0].pet, level: rows[0].cp.level };
 }
 
 router.get("/dungeon", async (req, res) => {
@@ -350,6 +352,7 @@ router.post("/dungeon/:dungeonId/enter", requireAuth, async (req, res) => {
 
   const newlyEarned: string[] = [];
   const completedMissions: string[] = [];
+  const petProgress = victory ? await grantActivePetExp(char.id, 20) : null;
 
   res.json({
     victory, logs, drops,
@@ -375,6 +378,7 @@ router.post("/dungeon/:dungeonId/enter", requireAuth, async (req, res) => {
       procDamagePct: petBonus.procDamagePct,
       log: petBonus.log,
     } : null,
+    petProgress,
     staminaRemaining: finalStamina,
     staminaCost,
     elementMessage: elementMsg,

@@ -12,6 +12,8 @@ export const petTemplatesTable = pgTable("pet_templates", {
   description: text("description").notNull().default(""),
   element: text("element"),
   rarity: text("rarity").notNull().default("pham"),
+  unlockSource: text("unlock_source").notNull().default("starter"),
+  unlockRef: text("unlock_ref"),
   bonusStats: jsonb("bonus_stats").$type<PetBonusStats>().default({}),
   procChance: real("proc_chance").notNull().default(0),
   procDamagePct: real("proc_damage_pct").notNull().default(0),
@@ -24,6 +26,7 @@ export const characterPetsTable = pgTable("character_pets", {
   charId: text("char_id").notNull(),
   petId: text("pet_id").notNull().references(() => petTemplatesTable.id),
   level: integer("level").notNull().default(1),
+  exp: integer("exp").notNull().default(0),
   active: boolean("active").notNull().default(false),
   acquiredAt: timestamp("acquired_at").defaultNow().notNull(),
 });

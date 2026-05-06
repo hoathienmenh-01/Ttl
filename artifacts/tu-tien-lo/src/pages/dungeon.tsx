@@ -60,6 +60,7 @@ type CombatResult = {
   } | null;
   totalRewards?: { exp: number; linhThach: number; drops: string[] };
   petUsed?: { id: string; name: string; atkPct: number; defPct: number; procChance: number; procDamagePct: number; log?: string | null } | null;
+  petProgress?: { petId: string; name: string; expGained: number; level: number; exp: number; leveledUp: boolean } | null;
   skillUsed?: { id: string; name: string; mpConsumed?: number; mpCost?: number; cooldownRounds?: number; log?: string | null } | null;
   skillUsage?: { id: string; name: string; casts: number; mpConsumed: number; cooldownRounds: number; log?: string | null }[];
   newlyEarned?: string[]; completedMissions?: string[];
@@ -289,6 +290,11 @@ export default function DungeonPage() {
                 <div className="font-medium text-emerald-200 mb-1">Linh thú đồng hành</div>
                 {result.petUsed.name} · ATK +{Math.round(result.petUsed.atkPct * 100)}% · DEF +{Math.round(result.petUsed.defPct * 100)}%
                 {result.petUsed.procChance > 0 && ` · Proc ${Math.round(result.petUsed.procChance * 100)}%`}
+                {result.petProgress && (
+                  <div className="text-emerald-500 mt-1">
+                    +{result.petProgress.expGained} EXP linh thú · Lv.{result.petProgress.level}{result.petProgress.leveledUp ? " tăng cấp" : ""}
+                  </div>
+                )}
               </div>
             )}
             {(result.skillUsage?.length || result.skillUsed) && (

@@ -12,6 +12,9 @@ import {
   PET_PROC_CHANCE_CAP,
   PET_PROC_DAMAGE_CAP,
   resolvePetCombatBonus,
+  applyPetExp,
+  PET_EXP_GRANT_CAP,
+  PET_LEVEL_CAP,
 } from "../../artifacts/api-server/src/lib/petCombat.js";
 import {
   DAILY_RESET_HOUR,
@@ -408,6 +411,13 @@ assert("Không equip pet chưa sở hữu", !canEquipPet(ownedPets, "hoa_tuoc_no
 assert("Pet ATK bonus bị cap", cappedPetBonus.atkPct === PET_ATK_BONUS_CAP);
 assert("Pet DEF bonus bị cap", cappedPetBonus.defPct === PET_DEF_BONUS_CAP);
 assert("Pet proc bị cap", cappedPetBonus.procChance === PET_PROC_CHANCE_CAP && cappedPetBonus.procDamagePct === PET_PROC_DAMAGE_CAP);
+const petProgress = applyPetExp(1, 90, 25);
+const petOverCap = applyPetExp(PET_LEVEL_CAP, 0, 999);
+const leveledPetBonus = resolvePetCombatBonus({ ...overTunedPet, level: 5 });
+assert("Pet exp gain bị cap nhỏ", petProgress.gained === PET_EXP_GRANT_CAP);
+assert("Pet tăng level khi đủ exp", petProgress.level === 2 && petProgress.exp === 15);
+assert("Pet không vượt level cap", petOverCap.level === PET_LEVEL_CAP && petOverCap.exp === 0);
+assert("Pet level bonus vẫn chịu combat cap", leveledPetBonus.atkPct === PET_ATK_BONUS_CAP && leveledPetBonus.defPct === PET_DEF_BONUS_CAP);
 
 // ── 18. Higher-tier alchemy recipes ────────────────────────────────────────
 console.log("\n[18] Higher-tier Alchemy Recipes");
