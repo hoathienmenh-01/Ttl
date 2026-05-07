@@ -20,6 +20,7 @@ import { grantPassXp } from "../lib/grantPassXp";
 import { resolveSkillCast } from "../lib/skillCombat";
 import { resolvePetCombatBonus, rollPetProc } from "../lib/petCombat";
 import { grantActivePetExp } from "../lib/petProgress";
+import { getModifierWarning, applyFloorModifiers, capModifierDamagePerRound } from "../lib/dungeonModifiers";
 
 const router = Router();
 
@@ -147,6 +148,12 @@ router.post("/dungeon/:dungeonId/enter", requireAuth, async (req, res) => {
   if (rootCombatMsg) logs.push(rootCombatMsg);
   if (attackSkillNames.length) logs.push(`Pháp thuật sẵn sàng: ${attackSkillNames.join(", ")}.`);
   if (petBonus.log) logs.push(petBonus.log);
+
+  // ── Dungeon modifiers warning ──────────────────────────────────────────────
+  const modifierWarning = getModifierWarning(dungeon.modifiers as Record<string, number>);
+  if (modifierWarning) {
+    logs.push(modifierWarning);
+  }
 
   let charHp = char.hp;
   let charMp = char.mp;
@@ -382,6 +389,9 @@ router.post("/dungeon/:dungeonId/enter", requireAuth, async (req, res) => {
     staminaRemaining: finalStamina,
     staminaCost,
     elementMessage: elementMsg,
+    floorModifier: dungeon.modifiers ?? {},
+    bossModifier: dungeon.bossModifiers ?? {},
+    modifierWarning,
     newlyEarned,
     completedMissions,
     message: victory

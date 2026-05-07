@@ -39,5 +39,7 @@ export const dungeonTemplatesTable = pgTable("dungeon_templates", {
   expReward: integer("exp_reward").default(200),
   linhThachReward: integer("linh_thach_reward").default(100),
   dropItems: jsonb("drop_items").$type<string[]>().default([]),
+  modifiers: jsonb("modifiers").$type<Record<string, number>>().default({}),
+  bossModifiers: jsonb("boss_modifiers").$type<Record<string, number>>().default({}),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

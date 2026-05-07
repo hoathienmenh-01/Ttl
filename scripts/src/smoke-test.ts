@@ -37,6 +37,15 @@ import {
   getDailyGrindAwareStatus,
   isStaleDailyGrindClaim,
 } from "../../artifacts/api-server/src/lib/dailyMission.js";
+import {
+  applyFloorModifiers,
+  applyBossMechanic,
+  getModifierWarning,
+  capModifierDamagePerRound,
+  MODIFIER_DAMAGE_CAP,
+  MODIFIER_DRAIN_CAP,
+  MODIFIER_ARMOR_CAP,
+} from "../../artifacts/api-server/src/lib/dungeonModifiers.js";
 
 let passed = 0;
 let failed = 0;
@@ -506,6 +515,104 @@ assert("Thiếu nguyên liệu bị chặn trước khi trừ item", missingIngr
 assert("Craft thành công tạo output", successfulCraft.success === true && successfulCraft.inventory.kim_dan_tam_an === 1);
 assert("Craft thất bại vẫn không âm item", failedCraft.success === false && Object.values(failedCraft.inventory).every(qty => qty >= 0));
 assert("Craft trừ Linh Thạch theo cost", successfulCraft.linhThach === 4100 && failedCraft.linhThach === 4100);
+
+// ── Dungeon Modifiers & Boss Mechanics
+console.log("\n[19] Dungeon Modifiers & Boss Mechanics");
+
+// Test poison modifier
+const poisonResult = applyFloorModifiers(
+  { poison: 0.5 }, // Use higher value to guarantee damage
+  5000,
+  10000,
+  300,
+  100,
+  50,
+  1,
+);
+assert("Poison modifier triggers", poisonResult.damagePerRound > 0);
+
+// Test armor modifier (damage reduction)
+const armorResult = applyFloorModifiers(
+  { armor: 0.15 },
+  5000,
+  10000,
+  300,
+  100,
+  100,
+  1,
+);
+assert("Armor modifier reduces damage taken", armorResult.damageReduction > 0);
+
+// Test freeze modifier (attack reduction)
+const freezeResult = applyFloorModifiers(
+  { freeze: 0.1 },
+  5000,
+  10000,
+  300,
+  200, // playerAtk
+  50,
+  1,
+);
+assert("Freeze modifier reduces attack", freezeResult.extraDamage < 0);
+
+// Test MP drain modifier
+const mpDrainResult = applyFloorModifiers(
+  { mp_drain: 0.5 }, // Use higher value
+  5000,
+  10000,
+  300,
+  100,
+  50,
+  1,
+);
+assert("MP drain modifier works", mpDrainResult.mpDrain > 0);
+
+// Test fire damage modifier
+const fireResult = applyFloorModifiers(
+  { fire_damage: 0.3 }, // Use higher value
+  5000,
+  10000,
+  300,
+  100,
+  50,
+  1,
+);
+assert("Fire damage modifier causes DOT", fireResult.damagePerRound > 0);
+
+// Test modifier damage cap
+const capped = capModifierDamagePerRound(5000, 10000);
+assert("Modifier damage per round capped at 15% HP", capped <= 1500);
+
+// Test boss mechanic
+const bossResult = applyBossMechanic(
+  { fire_damage: 0.5 }, // Use higher value
+  5000,
+  10000,
+  300,
+  1,
+);
+assert("Boss mechanic applies damage", bossResult.damagePerRound > 0);
+
+// Test modifier warning
+const warning = getModifierWarning({ poison: 0.08, fire_damage: 0.12 });
+assert("Modifier warning shows multiple modifiers", warning !== null && warning.includes("độc chất") && warning.includes("lửa"));
+
+// Test no modifier warning
+const noWarning = getModifierWarning({});
+assert("No warning when no modifiers", noWarning === null);
+
+// Test modifier cap doesn't exceed safe threshold
+const excessiveModifiers = applyFloorModifiers(
+  { poison: 1.0, fire_damage: 1.0, freeze: 1.0 },
+  5000,
+  10000,
+  300,
+  100,
+  50,
+  5, // round to trigger all
+);
+const cappedDmg = capModifierDamagePerRound(excessiveModifiers.damagePerRound, 10000);
+assert("Excessive modifiers are capped safely", cappedDmg <= 1500);
 
 // ── Summary ───────────────────────────────────────────────────────────────────
 console.log(`\n${"─".repeat(50)}`);
